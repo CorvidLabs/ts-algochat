@@ -3,7 +3,7 @@
 [![npm](https://img.shields.io/npm/v/ts-algochat)](https://www.npmjs.com/package/ts-algochat)
 [![License](https://img.shields.io/github/license/CorvidLabs/ts-algochat)](https://github.com/CorvidLabs/ts-algochat/blob/main/LICENSE)
 
-TypeScript implementation of the [AlgoChat Protocol](https://github.com/CorvidLabs/algochat-protocol) for encrypted messaging on Algorand.
+TypeScript implementation of the [AlgoChat Protocol](https://github.com/CorvidLabs/protocol-algochat) for encrypted messaging on Algorand.
 
 ## Features
 
@@ -177,7 +177,7 @@ interface Conversation {
 
 ## Protocol
 
-This library implements the [AlgoChat Protocol v1](https://github.com/CorvidLabs/algochat-protocol).
+This library implements the [AlgoChat Protocol v1](https://github.com/CorvidLabs/protocol-algochat).
 
 ### Wire Format
 
@@ -201,7 +201,7 @@ bun test
 
 ## Related Projects
 
-- [algochat-protocol](https://github.com/CorvidLabs/algochat-protocol) - Protocol specification
+- [protocol-algochat](https://github.com/CorvidLabs/protocol-algochat) - Protocol specification
 - [swift-algochat](https://github.com/CorvidLabs/swift-algochat) - Swift implementation
 - [algochat-web](https://github.com/CorvidLabs/algochat-web) - Web application
 
