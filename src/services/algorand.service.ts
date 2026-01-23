@@ -23,6 +23,24 @@ export interface ChatAccount {
     encryptionKeys: X25519KeyPair;
 }
 
+/** Indexer transaction response shape (subset of fields we use) */
+interface IndexerTransaction {
+    id: string;
+    sender: string;
+    txType: string;
+    note?: string;
+    roundTime?: number;
+    confirmedRound?: number;
+    paymentTransaction?: {
+        receiver?: string;
+        amount?: number;
+    };
+}
+
+interface IndexerSearchResponse {
+    transactions?: IndexerTransaction[];
+}
+
 export class AlgorandService {
     private algodClient: algosdk.Algodv2;
     private indexerClient: algosdk.Indexer;
@@ -53,7 +71,6 @@ export class AlgorandService {
         // Encrypt message
         const envelope = encryptMessage(
             message,
-            chatAccount.encryptionKeys.privateKey,
             chatAccount.encryptionKeys.publicKey,
             recipientPublicKey
         );
@@ -106,7 +123,6 @@ export class AlgorandService {
             message,
             replyToTxid,
             replyToPreview,
-            chatAccount.encryptionKeys.privateKey,
             chatAccount.encryptionKeys.publicKey,
             recipientPublicKey
         );
@@ -163,10 +179,9 @@ export class AlgorandService {
             query = query.minRound(afterRound);
         }
 
-        const response = await query.do();
+        const response = await query.do() as IndexerSearchResponse;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        for (const tx of (response.transactions || []) as any[]) {
+        for (const tx of response.transactions ?? []) {
             // Filter: payment transactions with notes
             if (tx.txType !== 'pay' || !tx.note) {
                 continue;
@@ -223,8 +238,10 @@ export class AlgorandService {
                           }
                         : undefined,
                 });
-            } catch {
-                // Skip malformed messages
+            } catch (error) {
+                // Log decryption failures for debugging - may indicate
+                // corrupted data or messages we can't decrypt
+                console.warn(`[AlgoChat] Failed to decrypt message ${tx.id}:`, error);
                 continue;
             }
         }
@@ -240,10 +257,9 @@ export class AlgorandService {
             .searchForTransactions()
             .address(address)
             .limit(searchDepth)
-            .do();
+            .do() as IndexerSearchResponse;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        for (const tx of (response.transactions || []) as any[]) {
+        for (const tx of response.transactions ?? []) {
             // Only look at transactions SENT by this address
             if (tx.sender !== address) continue;
             if (!tx.note) continue;
@@ -255,7 +271,9 @@ export class AlgorandService {
             try {
                 const envelope = decodeEnvelope(noteBytes);
                 return envelope.senderPublicKey;
-            } catch {
+            } catch (error) {
+                // Log but continue searching - this transaction may be malformed
+                console.warn(`[AlgoChat] Failed to decode envelope from ${tx.id}:`, error);
                 continue;
             }
         }
@@ -272,7 +290,6 @@ export class AlgorandService {
         // Self-encrypt
         const envelope = encryptMessage(
             payload,
-            chatAccount.encryptionKeys.privateKey,
             chatAccount.encryptionKeys.publicKey,
             chatAccount.encryptionKeys.publicKey // Self
         );

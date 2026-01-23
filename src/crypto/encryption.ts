@@ -24,10 +24,12 @@ export class EncryptionError extends Error {
 
 /**
  * Encrypts a message for a recipient with forward secrecy
+ *
+ * Note: senderPublicKey is used for bidirectional decryption - it allows
+ * the sender to decrypt their own sent messages.
  */
 export function encryptMessage(
     plaintext: string,
-    _senderPrivateKey: Uint8Array,
     senderPublicKey: Uint8Array,
     recipientPublicKey: Uint8Array
 ): ChatEnvelope {
@@ -80,7 +82,6 @@ export function encryptReply(
     text: string,
     replyToTxid: string,
     replyToPreview: string,
-    senderPrivateKey: Uint8Array,
     senderPublicKey: Uint8Array,
     recipientPublicKey: Uint8Array
 ): ChatEnvelope {
@@ -95,7 +96,7 @@ export function encryptReply(
         },
     });
 
-    return encryptMessage(payload, senderPrivateKey, senderPublicKey, recipientPublicKey);
+    return encryptMessage(payload, senderPublicKey, recipientPublicKey);
 }
 
 /**

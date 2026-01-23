@@ -92,7 +92,6 @@ describe('Message Encryption', () => {
 
         const envelope = encryptMessage(
             original,
-            senderKeys.privateKey,
             senderKeys.publicKey,
             recipientKeys.publicKey
         );
@@ -111,7 +110,6 @@ describe('Message Encryption', () => {
 
         const envelope = encryptMessage(
             original,
-            senderKeys.privateKey,
             senderKeys.publicKey,
             recipientKeys.publicKey
         );
@@ -126,8 +124,8 @@ describe('Message Encryption', () => {
         const senderKeys = deriveEncryptionKeys(new Uint8Array(32).fill(1));
         const recipientKeys = deriveEncryptionKeys(new Uint8Array(32).fill(2));
 
-        const envelope1 = encryptMessage('Message 1', senderKeys.privateKey, senderKeys.publicKey, recipientKeys.publicKey);
-        const envelope2 = encryptMessage('Message 2', senderKeys.privateKey, senderKeys.publicKey, recipientKeys.publicKey);
+        const envelope1 = encryptMessage('Message 1', senderKeys.publicKey, recipientKeys.publicKey);
+        const envelope2 = encryptMessage('Message 2', senderKeys.publicKey, recipientKeys.publicKey);
 
         expect(uint8ArrayEquals(envelope1.ephemeralPublicKey, envelope2.ephemeralPublicKey)).toBe(false);
     });
@@ -136,8 +134,8 @@ describe('Message Encryption', () => {
         const senderKeys = deriveEncryptionKeys(new Uint8Array(32).fill(1));
         const recipientKeys = deriveEncryptionKeys(new Uint8Array(32).fill(2));
 
-        const envelope1 = encryptMessage('Message 1', senderKeys.privateKey, senderKeys.publicKey, recipientKeys.publicKey);
-        const envelope2 = encryptMessage('Message 2', senderKeys.privateKey, senderKeys.publicKey, recipientKeys.publicKey);
+        const envelope1 = encryptMessage('Message 1', senderKeys.publicKey, recipientKeys.publicKey);
+        const envelope2 = encryptMessage('Message 2', senderKeys.publicKey, recipientKeys.publicKey);
 
         expect(uint8ArrayEquals(envelope1.nonce, envelope2.nonce)).toBe(false);
     });
@@ -150,7 +148,6 @@ describe('Message Encryption', () => {
 
         const envelope = encryptMessage(
             original,
-            senderKeys.privateKey,
             senderKeys.publicKey,
             recipientKeys.publicKey
         );
@@ -166,7 +163,6 @@ describe('Message Encryption', () => {
         // Self-encrypt key-publish payload
         const envelope = encryptMessage(
             '{"type":"key-publish"}',
-            senderKeys.privateKey,
             senderKeys.publicKey,
             senderKeys.publicKey
         );
@@ -187,7 +183,6 @@ describe('Full Round-Trip', () => {
         // Encrypt
         const envelope = encryptMessage(
             original,
-            senderKeys.privateKey,
             senderKeys.publicKey,
             recipientKeys.publicKey
         );
