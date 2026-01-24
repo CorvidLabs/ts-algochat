@@ -113,6 +113,7 @@ export class AlgorandService {
             confirmedRound: 0,
             direction: 'sent',
             replyContext: options.replyContext,
+            amount: options?.amount ?? 1000,
         };
 
         const result: SendResult = { txid, message: sentMessage };
@@ -192,6 +193,7 @@ export class AlgorandService {
             confirmedRound: 0,
             direction: 'sent',
             replyContext,
+            amount: options?.amount ?? 1000,
         };
 
         const result: SendResult = { txid, message: sentMessage };
@@ -294,6 +296,7 @@ export class AlgorandService {
                               preview: decrypted.replyToPreview || '',
                           }
                         : undefined,
+                    amount: tx.paymentTransaction?.amount,
                 });
             } catch (error) {
                 // Log decryption failures for debugging - may indicate
@@ -460,6 +463,7 @@ export class AlgorandService {
                     replyContext: decrypted.replyToId
                         ? { messageId: decrypted.replyToId, preview: decrypted.replyToPreview || '' }
                         : undefined,
+                    amount: tx.paymentTransaction?.amount,
                 };
 
                 if (!conversationsMap.has(otherParty)) {

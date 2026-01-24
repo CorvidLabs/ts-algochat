@@ -45,6 +45,8 @@ export interface Message {
     confirmedRound: number;
     direction: MessageDirection;
     replyContext?: ReplyContext;
+    /** Amount transferred in microAlgos */
+    amount?: number;
 }
 
 /** A conversation with another user */
