@@ -5,7 +5,7 @@
  */
 
 import algosdk from 'algosdk';
-import type { Message, SendResult, X25519KeyPair } from '../models/types';
+import type { Message, Conversation, SendResult, X25519KeyPair } from '../models/types';
 import { encryptMessage, encryptReply, decryptMessage, encodeEnvelope, decodeEnvelope, isChatMessage } from '../crypto';
 
 export interface AlgorandConfig {
@@ -321,6 +321,112 @@ export class AlgorandService {
     }
 
     /**
+     * Fetches all conversations for an account
+     *
+     * Scans transaction history and groups messages by participant.
+     * Returns conversations sorted by most recent message.
+     */
+    async fetchConversations(
+        chatAccount: ChatAccount,
+        limit = 100
+    ): Promise<Conversation[]> {
+        const response = await this.indexerClient
+            .searchForTransactions()
+            .address(chatAccount.address)
+            .limit(limit)
+            .do() as IndexerSearchResponse;
+
+        const conversationsMap = new Map<string, Conversation>();
+
+        for (const tx of response.transactions ?? []) {
+            if (tx.txType !== 'pay' || !tx.note) continue;
+
+            const noteBytes = base64ToBytes(tx.note);
+            if (!isChatMessage(noteBytes)) continue;
+
+            const sender: string = tx.sender;
+            const receiver: string | undefined = tx.paymentTransaction?.receiver;
+            if (!receiver) continue;
+
+            try {
+                const envelope = decodeEnvelope(noteBytes);
+                const decrypted = decryptMessage(
+                    envelope,
+                    chatAccount.encryptionKeys.privateKey,
+                    chatAccount.encryptionKeys.publicKey
+                );
+
+                if (!decrypted) continue;
+
+                // Skip key-publish transactions (self-tx with key-publish payload)
+                if (sender === receiver) {
+                    try {
+                        const parsed = JSON.parse(decrypted.text);
+                        if (parsed.type === 'key-publish') continue;
+                    } catch {
+                        // Not JSON, check plain text
+                        if (decrypted.text === 'key-publish') continue;
+                    }
+                }
+
+                const otherParty = sender === chatAccount.address ? receiver : sender;
+                const direction: 'sent' | 'received' = sender === chatAccount.address ? 'sent' : 'received';
+
+                const message: Message = {
+                    id: tx.id,
+                    sender,
+                    recipient: receiver,
+                    content: decrypted.text,
+                    timestamp: new Date((tx.roundTime ?? 0) * 1000),
+                    confirmedRound: tx.confirmedRound ?? 0,
+                    direction,
+                    replyContext: decrypted.replyToId
+                        ? { messageId: decrypted.replyToId, preview: decrypted.replyToPreview || '' }
+                        : undefined,
+                };
+
+                if (!conversationsMap.has(otherParty)) {
+                    conversationsMap.set(otherParty, {
+                        participant: otherParty,
+                        messages: [],
+                    });
+                }
+
+                const conv = conversationsMap.get(otherParty)!;
+                conv.messages.push(message);
+
+                // Store public key from received messages
+                if (direction === 'received') {
+                    conv.participantPublicKey = envelope.senderPublicKey;
+                }
+
+                // Track the latest round
+                const round = tx.confirmedRound ?? 0;
+                if (!conv.lastFetchedRound || round > conv.lastFetchedRound) {
+                    conv.lastFetchedRound = round;
+                }
+            } catch {
+                continue;
+            }
+        }
+
+        // Sort messages within each conversation
+        const conversations = Array.from(conversationsMap.values());
+        for (const conv of conversations) {
+            conv.messages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+        }
+
+        // Sort conversations by most recent message
+        conversations.sort((a, b) => {
+            const aLast = a.messages[a.messages.length - 1]?.timestamp.getTime() ?? 0;
+            const bLast = b.messages[b.messages.length - 1]?.timestamp.getTime() ?? 0;
+            return bLast - aLast;
+        });
+
+        return conversations;
+    }
+
+    /**
      * Waits for transaction confirmation
      */
     async waitForConfirmation(txid: string, timeout = 10): Promise<void> {
@@ -329,10 +435,28 @@ export class AlgorandService {
 }
 
 /**
- * Decodes base64 string to Uint8Array
+ * Decodes base64 or base64url string to Uint8Array
+ *
+ * The Algorand indexer returns notes as base64url encoded strings,
+ * so we need to handle both standard base64 and base64url formats.
  */
-function base64ToBytes(base64: string): Uint8Array {
-    const binaryString = atob(base64);
+function base64ToBytes(input: string | Uint8Array): Uint8Array {
+    // If already Uint8Array, return as-is
+    if (input instanceof Uint8Array) {
+        return input;
+    }
+
+    if (typeof input !== 'string') {
+        return new Uint8Array(0);
+    }
+
+    // Convert base64url to standard base64
+    const standardBase64 = input.replace(/-/g, '+').replace(/_/g, '/');
+
+    // Add padding if needed
+    const padded = standardBase64 + '='.repeat((4 - (standardBase64.length % 4)) % 4);
+
+    const binaryString = atob(padded);
     const bytes = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
