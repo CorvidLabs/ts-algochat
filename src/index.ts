@@ -69,7 +69,7 @@ export {
     PublicKeyCache,
     InMemoryKeyStorage,
     KeyNotFoundError,
-    FileKeyStorage,
+    // FileKeyStorage - Node.js only, import from 'ts-algochat/node' if needed
     PasswordRequiredError,
     DecryptionFailedError,
     InvalidKeyDataError,
@@ -123,7 +123,7 @@ export {
     type SyncState,
     type SyncEvents,
     type SyncManagerConfig,
-    FileSendQueueStorage,
+    // FileSendQueueStorage - Node.js only, import from 'ts-algochat/node' if needed
 } from './queue';
 
 // Blockchain interfaces (abstract)

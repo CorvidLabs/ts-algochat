@@ -12,9 +12,12 @@ export {
     InMemoryKeyStorage,
     KeyNotFoundError,
 } from './encryption-key-storage';
+
+// Error types re-exported for compatibility (these don't require Node.js)
 export {
-    FileKeyStorage,
     PasswordRequiredError,
     DecryptionFailedError,
     InvalidKeyDataError,
-} from './file-key-storage';
+} from './file-key-storage.errors';
+
+// FileKeyStorage is Node.js only - import from 'ts-algochat/node' if needed

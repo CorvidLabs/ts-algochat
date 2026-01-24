@@ -26,30 +26,14 @@ import { homedir } from 'node:os';
 import { randomBytes, pbkdf2Sync, createCipheriv, createDecipheriv } from 'node:crypto';
 import type { EncryptionKeyStorage } from './encryption-key-storage';
 import { KeyNotFoundError } from './encryption-key-storage';
+import {
+    PasswordRequiredError,
+    DecryptionFailedError,
+    InvalidKeyDataError,
+} from './file-key-storage.errors';
 
-/** Error thrown when password is required but not set */
-export class PasswordRequiredError extends Error {
-    constructor() {
-        super('Password is required for file key storage');
-        this.name = 'PasswordRequiredError';
-    }
-}
-
-/** Error thrown when decryption fails (wrong password) */
-export class DecryptionFailedError extends Error {
-    constructor() {
-        super('Decryption failed - incorrect password or corrupted data');
-        this.name = 'DecryptionFailedError';
-    }
-}
-
-/** Error thrown when key data is invalid */
-export class InvalidKeyDataError extends Error {
-    constructor() {
-        super('Invalid key data format');
-        this.name = 'InvalidKeyDataError';
-    }
-}
+// Re-export errors for backwards compatibility
+export { PasswordRequiredError, DecryptionFailedError, InvalidKeyDataError };
 
 /**
  * File-based encryption key storage with password protection.

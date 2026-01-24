@@ -17,4 +17,4 @@ export {
     type SyncManagerConfig,
 } from './SyncManager';
 
-export { FileSendQueueStorage } from './file-send-queue-storage';
+// FileSendQueueStorage is Node.js only - import from 'ts-algochat/node' if needed
