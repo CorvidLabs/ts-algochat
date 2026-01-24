@@ -5,7 +5,7 @@
  *
  * @example
  * ```typescript
- * import { AlgorandService, createChatAccountFromMnemonic } from '@algochat/web';
+ * import { AlgorandService, createChatAccountFromMnemonic, SendOptionsPresets } from '@algochat/web';
  *
  * // Initialize
  * const service = new AlgorandService({
@@ -20,15 +20,16 @@
  * // Discover recipient's key
  * const recipientPubKey = await service.discoverPublicKey('RECIPIENT_ADDRESS...');
  *
- * // Send a message
+ * // Send a message (with confirmation)
  * const result = await service.sendMessage(
  *   chatAccount,
  *   'RECIPIENT_ADDRESS...',
  *   recipientPubKey,
- *   'Hello from AlgoChat!'
+ *   'Hello from AlgoChat!',
+ *   SendOptionsPresets.confirmed
  * );
  *
- * console.log('Sent:', result.txid);
+ * console.log('Sent:', result.txid, 'Round:', result.confirmedRound);
  *
  * // Fetch messages
  * const messages = await service.fetchMessages(chatAccount, 'RECIPIENT_ADDRESS...');
@@ -43,11 +44,19 @@ export type {
     ReplyContext,
     Message,
     MessageDirection,
-    Conversation,
+    Conversation as ConversationData,
     SendResult,
+    SendOptions,
+    SendReplyContext,
+    DiscoveredKey,
+    PendingMessage,
+    PendingMessageStatus,
 } from './models/types';
 
-export { PROTOCOL } from './models/types';
+export { PROTOCOL, SendOptionsPresets } from './models/types';
+
+// Conversation class
+export { Conversation } from './models/Conversation';
 
 // Crypto functions
 export {
@@ -64,6 +73,33 @@ export {
     EnvelopeError,
 } from './crypto';
 
+// Errors
+export {
+    ChatError,
+    ChatErrorCode,
+    isChatError,
+    wrapError,
+} from './errors';
+
+// Caches
+export {
+    PublicKeyCache,
+    type MessageCache,
+    InMemoryMessageCache,
+} from './cache';
+
+// Queue and sync
+export {
+    SendQueue,
+    InMemorySendQueueStorage,
+    type SendQueueStorage,
+    type EnqueueOptions,
+    SyncManager,
+    type SyncState,
+    type SyncEvents,
+    type SyncManagerConfig,
+} from './queue';
+
 // Services
 export {
     AlgorandService,
@@ -75,4 +111,8 @@ export {
     validateAddress,
     publicKeyToBase64,
     base64ToPublicKey,
+    MessageIndexer,
+    type MessageIndexerConfig,
+    type PaginationOptions,
+    type WaitForTransactionOptions,
 } from './services';

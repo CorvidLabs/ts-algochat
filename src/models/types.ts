@@ -59,6 +59,82 @@ export interface Conversation {
 export interface SendResult {
     txid: string;
     message: Message;
+    confirmedRound?: number;
+}
+
+/** Reply context used when sending */
+export interface SendReplyContext {
+    messageId: string;
+    preview: string;
+}
+
+/** Options for sending messages */
+export interface SendOptions {
+    /** Wait for transaction confirmation (default: false) */
+    waitForConfirmation?: boolean;
+    /** Confirmation timeout in rounds (default: 10) */
+    timeout?: number;
+    /** Wait for indexer to index the transaction (default: false) */
+    waitForIndexer?: boolean;
+    /** Indexer timeout in milliseconds (default: 30000) */
+    indexerTimeout?: number;
+    /** Reply context for threaded messages */
+    replyContext?: SendReplyContext;
+}
+
+/** Preset configurations for SendOptions */
+export const SendOptionsPresets = {
+    /** Default: fire and forget */
+    default: {} as SendOptions,
+    /** Wait for transaction confirmation */
+    confirmed: { waitForConfirmation: true } as SendOptions,
+    /** Wait for both confirmation and indexer */
+    indexed: { waitForConfirmation: true, waitForIndexer: true } as SendOptions,
+} as const;
+
+/** A discovered public key with metadata */
+export interface DiscoveredKey {
+    /** The X25519 public key */
+    publicKey: Uint8Array;
+    /** Algorand address that owns this key */
+    address: string;
+    /** Transaction ID where key was discovered */
+    discoveredInTx: string;
+    /** Round number where key was discovered */
+    discoveredAtRound: number;
+    /** Timestamp of discovery */
+    discoveredAt: Date;
+}
+
+/** Status of a pending message in the send queue */
+export type PendingMessageStatus = 'queued' | 'sending' | 'sent' | 'failed';
+
+/** A message waiting in the send queue */
+export interface PendingMessage {
+    /** Unique local identifier */
+    id: string;
+    /** Recipient Algorand address */
+    recipient: string;
+    /** Recipient's encryption public key */
+    recipientPublicKey: Uint8Array;
+    /** Message content */
+    content: string;
+    /** Optional reply context */
+    replyContext?: SendReplyContext;
+    /** Current status */
+    status: PendingMessageStatus;
+    /** Number of send attempts */
+    retryCount: number;
+    /** Maximum retries before expiring */
+    maxRetries: number;
+    /** When the message was queued */
+    createdAt: Date;
+    /** Last send attempt time */
+    lastAttemptAt?: Date;
+    /** Error message if failed */
+    lastError?: string;
+    /** Transaction ID if sent */
+    txid?: string;
 }
 
 /** Protocol constants */

@@ -5,8 +5,9 @@
  */
 
 import algosdk from 'algosdk';
-import type { Message, Conversation, SendResult, X25519KeyPair } from '../models/types';
+import type { Message, Conversation, SendResult, SendOptions, X25519KeyPair, DiscoveredKey } from '../models/types';
 import { encryptMessage, encryptReply, decryptMessage, encodeEnvelope, decodeEnvelope, isChatMessage } from '../crypto';
+import { ChatError } from '../errors/ChatError';
 
 export interface AlgorandConfig {
     algodToken: string;
@@ -61,12 +62,19 @@ export class AlgorandService {
 
     /**
      * Sends an encrypted message to a recipient
+     *
+     * @param chatAccount - The sender's chat account
+     * @param recipientAddress - Recipient's Algorand address
+     * @param recipientPublicKey - Recipient's encryption public key
+     * @param message - Message content
+     * @param options - Send options (waitForConfirmation, waitForIndexer, etc.)
      */
     async sendMessage(
         chatAccount: ChatAccount,
         recipientAddress: string,
         recipientPublicKey: Uint8Array,
-        message: string
+        message: string,
+        options: SendOptions = {}
     ): Promise<SendResult> {
         // Encrypt message
         const envelope = encryptMessage(
@@ -103,13 +111,40 @@ export class AlgorandService {
             timestamp: new Date(),
             confirmedRound: 0,
             direction: 'sent',
+            replyContext: options.replyContext,
         };
 
-        return { txid, message: sentMessage };
+        const result: SendResult = { txid, message: sentMessage };
+
+        // Wait for confirmation if requested
+        if (options.waitForConfirmation) {
+            const timeout = options.timeout ?? 10;
+            const confirmation = await algosdk.waitForConfirmation(this.algodClient, txid, timeout);
+            result.confirmedRound = Number(confirmation.confirmedRound);
+            sentMessage.confirmedRound = result.confirmedRound;
+        }
+
+        // Wait for indexer if requested
+        if (options.waitForIndexer) {
+            const indexed = await this.waitForIndexer(txid, options.indexerTimeout ?? 30000);
+            if (!indexed) {
+                throw ChatError.timeout('waitForIndexer', options.indexerTimeout ?? 30000);
+            }
+        }
+
+        return result;
     }
 
     /**
      * Sends a reply to a message
+     *
+     * @param chatAccount - The sender's chat account
+     * @param recipientAddress - Recipient's Algorand address
+     * @param recipientPublicKey - Recipient's encryption public key
+     * @param message - Message content
+     * @param replyToTxid - Transaction ID of the message being replied to
+     * @param replyToPreview - Preview text of the message being replied to
+     * @param options - Send options (waitForConfirmation, waitForIndexer, etc.)
      */
     async sendReply(
         chatAccount: ChatAccount,
@@ -117,7 +152,8 @@ export class AlgorandService {
         recipientPublicKey: Uint8Array,
         message: string,
         replyToTxid: string,
-        replyToPreview: string
+        replyToPreview: string,
+        options: SendOptions = {}
     ): Promise<SendResult> {
         const envelope = encryptReply(
             message,
@@ -141,6 +177,11 @@ export class AlgorandService {
         const signedTxn = txn.signTxn(chatAccount.account.sk);
         const { txid } = await this.algodClient.sendRawTransaction(signedTxn).do();
 
+        const replyContext = {
+            messageId: replyToTxid,
+            preview: replyToPreview,
+        };
+
         const sentMessage: Message = {
             id: txid,
             sender: chatAccount.address,
@@ -149,13 +190,28 @@ export class AlgorandService {
             timestamp: new Date(),
             confirmedRound: 0,
             direction: 'sent',
-            replyContext: {
-                messageId: replyToTxid,
-                preview: replyToPreview,
-            },
+            replyContext,
         };
 
-        return { txid, message: sentMessage };
+        const result: SendResult = { txid, message: sentMessage };
+
+        // Wait for confirmation if requested
+        if (options.waitForConfirmation) {
+            const timeout = options.timeout ?? 10;
+            const confirmation = await algosdk.waitForConfirmation(this.algodClient, txid, timeout);
+            result.confirmedRound = Number(confirmation.confirmedRound);
+            sentMessage.confirmedRound = result.confirmedRound;
+        }
+
+        // Wait for indexer if requested
+        if (options.waitForIndexer) {
+            const indexed = await this.waitForIndexer(txid, options.indexerTimeout ?? 30000);
+            if (!indexed) {
+                throw ChatError.timeout('waitForIndexer', options.indexerTimeout ?? 30000);
+            }
+        }
+
+        return result;
     }
 
     /**
@@ -251,8 +307,22 @@ export class AlgorandService {
 
     /**
      * Discovers a user's encryption public key from their transaction history
+     *
+     * @param address - Algorand address to discover key for
+     * @param searchDepth - Maximum transactions to search (default: 200)
      */
     async discoverPublicKey(address: string, searchDepth = 200): Promise<Uint8Array> {
+        const result = await this.discoverPublicKeyWithMetadata(address, searchDepth);
+        return result.publicKey;
+    }
+
+    /**
+     * Discovers a user's encryption public key with full metadata
+     *
+     * @param address - Algorand address to discover key for
+     * @param searchDepth - Maximum transactions to search (default: 200)
+     */
+    async discoverPublicKeyWithMetadata(address: string, searchDepth = 200): Promise<DiscoveredKey> {
         const response = await this.indexerClient
             .searchForTransactions()
             .address(address)
@@ -270,7 +340,13 @@ export class AlgorandService {
 
             try {
                 const envelope = decodeEnvelope(noteBytes);
-                return envelope.senderPublicKey;
+                return {
+                    publicKey: envelope.senderPublicKey,
+                    address,
+                    discoveredInTx: tx.id,
+                    discoveredAtRound: tx.confirmedRound ?? 0,
+                    discoveredAt: new Date((tx.roundTime ?? 0) * 1000),
+                };
             } catch (error) {
                 // Log but continue searching - this transaction may be malformed
                 console.warn(`[AlgoChat] Failed to decode envelope from ${tx.id}:`, error);
@@ -278,7 +354,7 @@ export class AlgorandService {
             }
         }
 
-        throw new Error(`Public key not found for address: ${address}`);
+        throw ChatError.publicKeyNotFound(address, searchDepth);
     }
 
     /**
@@ -428,10 +504,82 @@ export class AlgorandService {
 
     /**
      * Waits for transaction confirmation
+     *
+     * @param txid - Transaction ID to wait for
+     * @param timeout - Timeout in rounds (default: 10)
+     * @returns Confirmed round number
      */
-    async waitForConfirmation(txid: string, timeout = 10): Promise<void> {
-        await algosdk.waitForConfirmation(this.algodClient, txid, timeout);
+    async waitForConfirmation(txid: string, timeout = 10): Promise<number> {
+        const result = await algosdk.waitForConfirmation(this.algodClient, txid, timeout);
+        return Number(result.confirmedRound);
     }
+
+    /**
+     * Waits for a transaction to be indexed
+     *
+     * Uses exponential backoff with jitter for efficient polling.
+     *
+     * @param txid - Transaction ID to wait for
+     * @param timeout - Timeout in milliseconds (default: 30000)
+     * @param initialInterval - Initial polling interval (default: 500ms)
+     * @param maxInterval - Maximum polling interval (default: 5000ms)
+     * @param backoffMultiplier - Backoff multiplier (default: 1.5)
+     * @returns true if indexed, false if timeout
+     */
+    async waitForIndexer(
+        txid: string,
+        timeout = 30000,
+        initialInterval = 500,
+        maxInterval = 5000,
+        backoffMultiplier = 1.5
+    ): Promise<boolean> {
+        const deadline = Date.now() + timeout;
+        let interval = initialInterval;
+
+        while (Date.now() < deadline) {
+            try {
+                await this.indexerClient.lookupTransactionByID(txid).do();
+                return true;
+            } catch {
+                // Transaction not yet indexed, continue waiting
+            }
+
+            // Calculate remaining time
+            const remaining = deadline - Date.now();
+            if (remaining <= 0) {
+                break;
+            }
+
+            // Apply jitter (0.8x to 1.2x)
+            const jitter = 0.8 + Math.random() * 0.4;
+            const sleepTime = Math.min(interval * jitter, remaining);
+
+            await sleep(sleepTime);
+
+            // Exponential backoff
+            interval = Math.min(interval * backoffMultiplier, maxInterval);
+        }
+
+        return false;
+    }
+
+    /**
+     * Checks if a transaction exists in the indexer
+     *
+     * @param txid - Transaction ID to check
+     */
+    async transactionExists(txid: string): Promise<boolean> {
+        try {
+            await this.indexerClient.lookupTransactionByID(txid).do();
+            return true;
+        } catch {
+            return false;
+        }
+    }
+}
+
+function sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 /**

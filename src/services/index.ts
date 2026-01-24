@@ -11,3 +11,9 @@ export {
     publicKeyToBase64,
     base64ToPublicKey,
 } from './mnemonic.service';
+export {
+    MessageIndexer,
+    type MessageIndexerConfig,
+    type PaginationOptions,
+    type WaitForTransactionOptions,
+} from './MessageIndexer';

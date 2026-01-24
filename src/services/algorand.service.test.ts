@@ -197,7 +197,7 @@ describe('AlgorandService', () => {
             service.indexerClient = mockIndexer;
 
             await expect(service.discoverPublicKey(fakeAddress)).rejects.toThrow(
-                /Public key not found for address/
+                /Public key not found for/
             );
         });
     });
