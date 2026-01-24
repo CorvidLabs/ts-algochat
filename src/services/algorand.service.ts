@@ -219,12 +219,19 @@ export class AlgorandService {
 
     /**
      * Fetches messages with a participant
+     *
+     * @param chatAccount - The user's chat account
+     * @param participantAddress - Address of the conversation participant
+     * @param afterRound - Only fetch messages after this round (for polling new messages)
+     * @param limit - Maximum number of messages to fetch
+     * @param beforeRound - Only fetch messages before this round (for pagination/loading older)
      */
     async fetchMessages(
         chatAccount: ChatAccount,
         participantAddress: string,
         afterRound?: number,
-        limit = 50
+        limit = 50,
+        beforeRound?: number
     ): Promise<Message[]> {
         const messages: Message[] = [];
 
@@ -236,6 +243,9 @@ export class AlgorandService {
 
         if (afterRound) {
             query = query.minRound(afterRound);
+        }
+        if (beforeRound) {
+            query = query.maxRound(beforeRound - 1);
         }
 
         const response = await query.do() as IndexerSearchResponse;
