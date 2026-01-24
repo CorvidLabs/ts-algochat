@@ -100,14 +100,16 @@ export const SendOptionsPresets = {
 export interface DiscoveredKey {
     /** The X25519 public key */
     publicKey: Uint8Array;
-    /** Algorand address that owns this key */
-    address: string;
-    /** Transaction ID where key was discovered */
-    discoveredInTx: string;
-    /** Round number where key was discovered */
-    discoveredAtRound: number;
-    /** Timestamp of discovery */
-    discoveredAt: Date;
+    /** Whether the key was cryptographically verified via Ed25519 signature */
+    isVerified: boolean;
+    /** Algorand address that owns this key (optional - not all discovery methods provide this) */
+    address?: string;
+    /** Transaction ID where key was discovered (optional) */
+    discoveredInTx?: string;
+    /** Round number where key was discovered (optional) */
+    discoveredAtRound?: number;
+    /** Timestamp of discovery (optional) */
+    discoveredAt?: Date;
 }
 
 /** Status of a pending message in the send queue */

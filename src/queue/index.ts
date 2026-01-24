@@ -16,3 +16,5 @@ export {
     type SyncEvents,
     type SyncManagerConfig,
 } from './SyncManager';
+
+export { FileSendQueueStorage } from './file-send-queue-storage';
