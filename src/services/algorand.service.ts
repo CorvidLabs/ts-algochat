@@ -47,16 +47,17 @@ export class AlgorandService {
     private indexerClient: algosdk.Indexer;
 
     constructor(config: AlgorandConfig) {
+        // Pass empty string for port when not specified to avoid algosdk defaulting to 8080
         this.algodClient = new algosdk.Algodv2(
             config.algodToken,
             config.algodServer,
-            config.algodPort
+            config.algodPort ?? ''
         );
 
         this.indexerClient = new algosdk.Indexer(
             config.indexerToken,
             config.indexerServer,
-            config.indexerPort
+            config.indexerPort ?? ''
         );
     }
 
