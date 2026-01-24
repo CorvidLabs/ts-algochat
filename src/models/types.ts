@@ -80,6 +80,8 @@ export interface SendOptions {
     indexerTimeout?: number;
     /** Reply context for threaded messages */
     replyContext?: SendReplyContext;
+    /** Amount to send in microAlgos (default: 1000 = 0.001 ALGO) */
+    amount?: number;
 }
 
 /** Preset configurations for SendOptions */

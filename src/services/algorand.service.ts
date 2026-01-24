@@ -94,7 +94,7 @@ export class AlgorandService {
         const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
             sender: chatAccount.address,
             receiver: recipientAddress,
-            amount: 1000, // 0.001 ALGO minimum
+            amount: options?.amount ?? 1000, // 0.001 ALGO minimum
             note,
             suggestedParams: params,
         });
@@ -170,7 +170,7 @@ export class AlgorandService {
         const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
             sender: chatAccount.address,
             receiver: recipientAddress,
-            amount: 1000,
+            amount: options?.amount ?? 1000,
             note,
             suggestedParams: params,
         });
