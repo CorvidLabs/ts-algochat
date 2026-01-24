@@ -74,10 +74,11 @@ export class MessageIndexer {
     private indexerClient: algosdk.Indexer;
 
     constructor(config: MessageIndexerConfig) {
+        // Pass empty string for port when not specified to avoid algosdk defaulting to 8080
         this.indexerClient = new algosdk.Indexer(
             config.indexerToken,
             config.indexerServer,
-            config.indexerPort
+            config.indexerPort ?? ''
         );
     }
 
