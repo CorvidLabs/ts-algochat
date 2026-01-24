@@ -32,9 +32,14 @@ export class PublicKeyCache {
      * Stores a discovered key in the cache
      *
      * @param key - The discovered key to cache
+     * @param address - The address to cache under (uses key.address if not provided)
      */
-    public store(key: DiscoveredKey): void {
-        this.cache.set(key.address, {
+    public store(key: DiscoveredKey, address?: string): void {
+        const cacheKey = address ?? key.address;
+        if (!cacheKey) {
+            throw new Error('Address is required to cache a discovered key');
+        }
+        this.cache.set(cacheKey, {
             key,
             cachedAt: Date.now(),
         });

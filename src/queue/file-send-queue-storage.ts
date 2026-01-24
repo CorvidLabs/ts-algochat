@@ -7,14 +7,30 @@
 import { mkdir, readFile, writeFile, unlink, chmod, stat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
-import type { PendingMessage } from '../models/pending-message';
-import type { SendQueueStorage } from './send-queue';
+import type { PendingMessage, PendingMessageStatus, SendReplyContext } from '../models/types';
+import type { SendQueueStorage } from './SendQueue';
 
 /** Default directory name for AlgoChat data */
 const DEFAULT_DIRECTORY = '.algochat';
 
 /** Default filename for the queue */
 const DEFAULT_FILENAME = 'queue.json';
+
+/** Serialized format for pending messages */
+interface SerializedPendingMessage {
+    id: string;
+    recipient: string;
+    recipientPublicKey: string; // base64 encoded
+    content: string;
+    replyContext?: SendReplyContext;
+    status: PendingMessageStatus;
+    retryCount: number;
+    maxRetries: number;
+    createdAt: string;
+    lastAttemptAt?: string;
+    lastError?: string;
+    txid?: string;
+}
 
 /**
  * File-based persistent storage for the send queue.
@@ -60,11 +76,20 @@ export class FileSendQueueStorage implements SendQueueStorage {
             return;
         }
 
-        // Serialize with pretty printing and sorted keys
-        const serialized = messages.map((m) => ({
-            ...m,
+        // Serialize with pretty printing
+        const serialized: SerializedPendingMessage[] = messages.map((m) => ({
+            id: m.id,
+            recipient: m.recipient,
+            recipientPublicKey: Buffer.from(m.recipientPublicKey).toString('base64'),
+            content: m.content,
+            replyContext: m.replyContext,
+            status: m.status,
+            retryCount: m.retryCount,
+            maxRetries: m.maxRetries,
             createdAt: m.createdAt.toISOString(),
-            lastAttempt: m.lastAttempt?.toISOString(),
+            lastAttemptAt: m.lastAttemptAt?.toISOString(),
+            lastError: m.lastError,
+            txid: m.txid,
         }));
         const json = JSON.stringify(serialized, null, 2);
 
@@ -97,29 +122,35 @@ export class FileSendQueueStorage implements SendQueueStorage {
         }
 
         const json = await readFile(filePath, 'utf8');
-        const parsed = JSON.parse(json) as Array<{
-            id: string;
-            recipient: string;
-            content: string;
-            replyContext?: { messageId: string; preview: string };
-            createdAt: string;
-            retryCount: number;
-            lastAttempt?: string;
-            status: string;
-            lastError?: string;
-        }>;
+        const parsed = JSON.parse(json) as SerializedPendingMessage[];
 
         return parsed.map((m) => ({
             id: m.id,
             recipient: m.recipient,
+            recipientPublicKey: Uint8Array.from(Buffer.from(m.recipientPublicKey, 'base64')),
             content: m.content,
             replyContext: m.replyContext,
-            createdAt: new Date(m.createdAt),
+            status: m.status,
             retryCount: m.retryCount,
-            lastAttempt: m.lastAttempt ? new Date(m.lastAttempt) : undefined,
-            status: m.status as PendingMessage['status'],
+            maxRetries: m.maxRetries,
+            createdAt: new Date(m.createdAt),
+            lastAttemptAt: m.lastAttemptAt ? new Date(m.lastAttemptAt) : undefined,
             lastError: m.lastError,
+            txid: m.txid,
         }));
+    }
+
+    /** Clears all pending messages */
+    async clear(): Promise<void> {
+        const filePath = await this.getQueueFilePath();
+        try {
+            await unlink(filePath);
+        } catch (e) {
+            // File doesn't exist, that's fine
+            if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
+                throw e;
+            }
+        }
     }
 
     /** Gets the queue file path */

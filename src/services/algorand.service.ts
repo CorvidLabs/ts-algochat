@@ -346,6 +346,7 @@ export class AlgorandService {
                 const envelope = decodeEnvelope(noteBytes);
                 return {
                     publicKey: envelope.senderPublicKey,
+                    isVerified: false,
                     address,
                     discoveredInTx: tx.id,
                     discoveredAtRound: tx.confirmedRound ?? 0,

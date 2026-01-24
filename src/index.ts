@@ -58,19 +58,6 @@ export { PROTOCOL, SendOptionsPresets } from './models/types';
 // Conversation class
 export { Conversation } from './models/Conversation';
 
-// Pending message types
-export type {
-    PendingStatus,
-} from './models/pending-message';
-
-export {
-    createPendingMessage,
-    markSending,
-    markFailed,
-    markSent,
-    canRetry,
-} from './models/pending-message';
-
 // Storage
 export type {
     MessageCache,
