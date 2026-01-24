@@ -1,9 +1,13 @@
 # ts-algochat
 
+[![CI](https://img.shields.io/github/actions/workflow/status/CorvidLabs/ts-algochat/ci.yml?label=CI&branch=main)](https://github.com/CorvidLabs/ts-algochat/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/ts-algochat)](https://www.npmjs.com/package/ts-algochat)
 [![License](https://img.shields.io/github/license/CorvidLabs/ts-algochat)](https://github.com/CorvidLabs/ts-algochat/blob/main/LICENSE)
+[![Version](https://img.shields.io/github/v/release/CorvidLabs/ts-algochat)](https://github.com/CorvidLabs/ts-algochat/releases)
 
-TypeScript implementation of the [AlgoChat Protocol](https://github.com/CorvidLabs/protocol-algochat) for encrypted messaging on Algorand.
+> **Pre-1.0 Notice**: This library is under active development. The API may change between minor versions until 1.0.
+
+TypeScript implementation of the AlgoChat protocol for encrypted messaging on Algorand.
 
 ## Features
 
@@ -199,11 +203,13 @@ This library implements the [AlgoChat Protocol v1](https://github.com/CorvidLabs
 bun test
 ```
 
-## Related Projects
+## Cross-Implementation Compatibility
 
-- [protocol-algochat](https://github.com/CorvidLabs/protocol-algochat) - Protocol specification
-- [swift-algochat](https://github.com/CorvidLabs/swift-algochat) - Swift implementation
-- [algochat-web](https://github.com/CorvidLabs/algochat-web) - Web application
+This implementation is fully compatible with:
+- [swift-algochat](https://github.com/CorvidLabs/swift-algochat) (Swift)
+- [rs-algochat](https://github.com/CorvidLabs/rs-algochat) (Rust)
+- [py-algochat](https://github.com/CorvidLabs/py-algochat) (Python)
+- [kt-algochat](https://github.com/CorvidLabs/kt-algochat) (Kotlin)
 
 ## License
 
