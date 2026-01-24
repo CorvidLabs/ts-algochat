@@ -5,8 +5,8 @@
  * Note: Network-dependent methods require mocking or integration tests.
  */
 
-import { describe, test, expect, mock, spyOn } from 'bun:test';
-import { AlgorandService, type AlgorandConfig, type ChatAccount } from './algorand.service';
+import { describe, test, expect } from 'bun:test';
+import { AlgorandService, type AlgorandConfig } from './algorand.service';
 import { createRandomChatAccount } from './mnemonic.service';
 import { encryptMessage, encodeEnvelope } from '../crypto';
 
