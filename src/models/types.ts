@@ -141,6 +141,63 @@ export interface PendingMessage {
     txid?: string;
 }
 
+/** Result of discovering a user's encryption key */
+export interface DiscoveredKey {
+    /** The X25519 public key (32 bytes) */
+    publicKey: Uint8Array;
+    /** Whether the key was cryptographically verified via Ed25519 signature */
+    isVerified: boolean;
+}
+
+/** Options for sending a message */
+export interface SendOptions {
+    /** Wait for algod confirmation */
+    waitForConfirmation?: boolean;
+    /** Maximum rounds to wait for confirmation */
+    timeoutRounds?: number;
+    /** Wait for indexer visibility */
+    waitForIndexer?: boolean;
+    /** Maximum seconds to wait for indexer */
+    indexerTimeoutSecs?: number;
+    /** Reply context if replying to a message */
+    replyContext?: ReplyContext;
+}
+
+/** Default send options */
+export const DEFAULT_SEND_OPTIONS: Required<Omit<SendOptions, 'replyContext'>> & Pick<SendOptions, 'replyContext'> = {
+    waitForConfirmation: false,
+    timeoutRounds: 10,
+    waitForIndexer: false,
+    indexerTimeoutSecs: 30,
+    replyContext: undefined,
+};
+
+/** Create send options for fire-and-forget (no waiting) */
+export function fireAndForget(): SendOptions {
+    return { ...DEFAULT_SEND_OPTIONS };
+}
+
+/** Create send options to wait for algod confirmation only */
+export function confirmed(): SendOptions {
+    return { ...DEFAULT_SEND_OPTIONS, waitForConfirmation: true };
+}
+
+/** Create send options to wait for both algod and indexer */
+export function indexed(): SendOptions {
+    return { ...DEFAULT_SEND_OPTIONS, waitForConfirmation: true, waitForIndexer: true };
+}
+
+/** Create send options for replying to a message */
+export function replyingTo(message: Message, maxPreviewLength = 80): SendOptions {
+    const preview = message.content.length > maxPreviewLength
+        ? `${message.content.slice(0, maxPreviewLength - 3)}...`
+        : message.content;
+    return {
+        ...DEFAULT_SEND_OPTIONS,
+        replyContext: { messageId: message.id, preview },
+    };
+}
+
 /** Protocol constants */
 export const PROTOCOL = {
     VERSION: 0x01,

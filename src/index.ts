@@ -58,6 +58,36 @@ export { PROTOCOL, SendOptionsPresets } from './models/types';
 // Conversation class
 export { Conversation } from './models/Conversation';
 
+// Pending message types
+export type {
+    PendingStatus,
+} from './models/pending-message';
+
+export {
+    createPendingMessage,
+    markSending,
+    markFailed,
+    markSent,
+    canRetry,
+} from './models/pending-message';
+
+// Storage
+export type {
+    MessageCache,
+    EncryptionKeyStorage,
+} from './storage';
+
+export {
+    InMemoryMessageCache,
+    PublicKeyCache,
+    InMemoryKeyStorage,
+    KeyNotFoundError,
+    FileKeyStorage,
+    PasswordRequiredError,
+    DecryptionFailedError,
+    InvalidKeyDataError,
+} from './storage';
+
 // Crypto functions
 export {
     deriveEncryptionKeys,
@@ -71,6 +101,15 @@ export {
     isChatMessage,
     EncryptionError,
     EnvelopeError,
+    // Signature functions
+    signEncryptionKey,
+    verifyEncryptionKey,
+    getPublicKey,
+    fingerprint,
+    SignatureError,
+    ED25519_SIGNATURE_SIZE,
+    ED25519_PUBLIC_KEY_SIZE,
+    X25519_PUBLIC_KEY_SIZE,
 } from './crypto';
 
 // Errors
@@ -81,11 +120,9 @@ export {
     wrapError,
 } from './errors';
 
-// Caches
+// Caches (re-export from cache for backwards compatibility)
 export {
-    PublicKeyCache,
-    type MessageCache,
-    InMemoryMessageCache,
+    type MessageCache as LegacyMessageCache,
 } from './cache';
 
 // Queue and sync
@@ -94,13 +131,36 @@ export {
     InMemorySendQueueStorage,
     type SendQueueStorage,
     type EnqueueOptions,
+    type QueueEventCallback,
     SyncManager,
     type SyncState,
     type SyncEvents,
     type SyncManagerConfig,
+    FileSendQueueStorage,
 } from './queue';
 
-// Services
+// Blockchain interfaces (abstract)
+export type {
+    AlgodClient,
+    IndexerClient,
+    AlgorandConfig as BlockchainConfig,
+    TransactionInfo,
+    NoteTransaction,
+    SuggestedParams,
+    AccountInfo,
+} from './blockchain';
+
+export {
+    localnet,
+    testnet,
+    mainnet,
+    withIndexer,
+    parseKeyAnnouncement,
+    discoverEncryptionKey,
+    discoverEncryptionKeyFromMessages,
+} from './blockchain';
+
+// Services (concrete implementations)
 export {
     AlgorandService,
     type AlgorandConfig,
