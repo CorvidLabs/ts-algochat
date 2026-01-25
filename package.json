@@ -1,5 +1,5 @@
 {
-  "name": "ts-algochat",
+  "name": "@corvidlabs/ts-algochat",
   "version": "0.1.1",
   "description": "TypeScript implementation of the AlgoChat protocol for encrypted messaging on Algorand",
   "type": "module",
@@ -55,5 +55,8 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

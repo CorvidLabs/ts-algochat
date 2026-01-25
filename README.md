@@ -1,7 +1,7 @@
 # ts-algochat
 
 [![CI](https://img.shields.io/github/actions/workflow/status/CorvidLabs/ts-algochat/ci.yml?label=CI&branch=main)](https://github.com/CorvidLabs/ts-algochat/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/ts-algochat)](https://www.npmjs.com/package/ts-algochat)
+[![npm](https://img.shields.io/npm/v/@corvidlabs/ts-algochat)](https://www.npmjs.com/package/@corvidlabs/ts-algochat)
 [![License](https://img.shields.io/github/license/CorvidLabs/ts-algochat)](https://github.com/CorvidLabs/ts-algochat/blob/main/LICENSE)
 [![Version](https://img.shields.io/github/v/release/CorvidLabs/ts-algochat?display_name=tag)](https://github.com/CorvidLabs/ts-algochat/releases)
 
@@ -22,13 +22,13 @@ TypeScript implementation of the AlgoChat protocol for encrypted messaging on Al
 
 ```bash
 # npm
-npm install ts-algochat
+npm install @corvidlabs/ts-algochat
 
 # bun
-bun add ts-algochat
+bun add @corvidlabs/ts-algochat
 
 # pnpm
-pnpm add ts-algochat
+pnpm add @corvidlabs/ts-algochat
 ```
 
 ## Quick Start
@@ -37,7 +37,7 @@ pnpm add ts-algochat
 import {
     AlgorandService,
     createChatAccountFromMnemonic,
-} from 'ts-algochat';
+} from '@corvidlabs/ts-algochat';
 
 // Initialize service
 const service = new AlgorandService({
@@ -126,7 +126,7 @@ import {
     decryptMessage,
     encodeEnvelope,
     decodeEnvelope,
-} from 'ts-algochat';
+} from '@corvidlabs/ts-algochat';
 
 // Derive keys from seed
 const keys = deriveEncryptionKeys(seed);
