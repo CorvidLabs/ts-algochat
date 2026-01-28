@@ -181,12 +181,18 @@ interface Conversation {
 
 ## Protocol
 
-This library implements the [AlgoChat Protocol v1](https://github.com/CorvidLabs/protocol-algochat).
+This library implements the [AlgoChat Protocol v1](https://github.com/CorvidLabs/protocol-algochat) and the PSK v1.1 extension.
 
-### Wire Format
+### Wire Format (v1.0 Standard)
 
 ```
 [version: 1][protocol: 1][sender_pubkey: 32][ephemeral_pubkey: 32][nonce: 12][encrypted_sender_key: 48][ciphertext: variable]
+```
+
+### Wire Format (v1.1 PSK)
+
+```
+[version: 1][protocol: 2][ratchet_counter: 4][sender_pubkey: 32][ephemeral_pubkey: 32][nonce: 12][encrypted_sender_key: 48][ciphertext: variable]
 ```
 
 ### Cryptographic Primitives
@@ -196,6 +202,66 @@ This library implements the [AlgoChat Protocol v1](https://github.com/CorvidLabs
 | Key Agreement | X25519 ECDH |
 | Encryption | ChaCha20-Poly1305 |
 | Key Derivation | HKDF-SHA256 |
+
+## PSK v1.1 Protocol
+
+The PSK (Pre-Shared Key) v1.1 protocol adds an additional layer of authentication on top of standard ECDH encryption by incorporating a pre-shared key into the key derivation process.
+
+### Features
+
+- **Two-level key ratchet** - Session keys derived per 100 messages, position keys per message
+- **Hybrid encryption** - Combines ECDH forward secrecy with PSK authentication
+- **Replay protection** - Counter-based sliding window prevents message replay
+- **Out-of-band key exchange** - URI scheme for sharing PSK keys
+
+### Usage
+
+```typescript
+import {
+    derivePSKAtCounter,
+    encryptPSKMessage,
+    decryptPSKMessage,
+    encodePSKEnvelope,
+    decodePSKEnvelope,
+    isPSKMessage,
+    createPSKState,
+    advanceSendCounter,
+    validateCounter,
+    recordReceive,
+    createPSKExchangeURI,
+    parsePSKExchangeURI,
+} from '@corvidlabs/ts-algochat';
+
+// Derive PSK for a specific counter
+const psk = derivePSKAtCounter(sharedSecret, counter);
+
+// Encrypt a PSK message
+const envelope = encryptPSKMessage(
+    'Hello with PSK!',
+    senderPublicKey,
+    recipientPublicKey,
+    psk,
+    counter,
+);
+
+// Encode for transmission
+const bytes = encodePSKEnvelope(envelope);
+
+// Check if received data is a PSK message
+if (isPSKMessage(bytes)) {
+    const decoded = decodePSKEnvelope(bytes);
+    const content = decryptPSKMessage(decoded, myPrivateKey, myPublicKey, psk);
+}
+
+// Counter state management
+let state = createPSKState();
+const { counter: sendCounter, state: newState } = advanceSendCounter(state);
+state = newState;
+
+// Exchange URI for out-of-band key sharing
+const uri = createPSKExchangeURI('ALGO_ADDRESS', pskBytes, 'My Chat');
+const parsed = parsePSKExchangeURI(uri);
+```
 
 ## Testing
 
