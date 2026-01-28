@@ -163,3 +163,28 @@ export {
     type PaginationOptions,
     type WaitForTransactionOptions,
 } from './services';
+
+// PSK (Pre-Shared Key) v1.1 Protocol
+export {
+    PSK_PROTOCOL,
+    type PSKEnvelope,
+    type PSKState,
+    deriveSessionPSK,
+    derivePositionPSK,
+    derivePSKAtCounter,
+    deriveHybridSymmetricKey,
+    deriveSenderKey,
+    encodePSKEnvelope,
+    decodePSKEnvelope,
+    isPSKMessage,
+    PSKEnvelopeError,
+    createPSKState,
+    validateCounter,
+    recordReceive,
+    advanceSendCounter,
+    createPSKExchangeURI,
+    parsePSKExchangeURI,
+    encryptPSKMessage,
+    decryptPSKMessage,
+    PSKEncryptionError,
+} from './psk';
