@@ -13,10 +13,24 @@ TypeScript implementation of the AlgoChat protocol for encrypted messaging on Al
 
 - **End-to-End Encryption** - X25519 + ChaCha20-Poly1305
 - **Forward Secrecy** - Per-message ephemeral keys
+- **PSK Mode (v1.1)** - Hybrid ECDH + pre-shared key ratcheting for quantum defense-in-depth
 - **Bidirectional Decryption** - Sender can decrypt own messages
 - **Reply Support** - Thread conversations with context
 - **Zero Dependencies** - Uses @noble crypto libraries (audited)
 - **TypeScript First** - Full type safety
+
+## Security Properties
+
+| Property | Status |
+|----------|--------|
+| Message content confidentiality | Protected (E2EE) |
+| Message integrity | Protected (authenticated encryption) |
+| Forward secrecy | Protected (ephemeral keys per message) |
+| Replay attacks | Protected (blockchain uniqueness + PSK counter) |
+| Quantum resistance (key exchange) | Optional (PSK mode provides defense-in-depth) |
+| PSK session forward secrecy | Optional (100-message session boundaries in PSK mode) |
+| Metadata privacy | **Not protected** (addresses, timing visible) |
+| Traffic analysis | **Not protected** |
 
 ## Installation
 
@@ -205,14 +219,53 @@ This library implements the [AlgoChat Protocol v1](https://github.com/CorvidLabs
 
 ## PSK v1.1 Protocol
 
-The PSK (Pre-Shared Key) v1.1 protocol adds an additional layer of authentication on top of standard ECDH encryption by incorporating a pre-shared key into the key derivation process.
+The PSK (Pre-Shared Key) v1.1 protocol adds an additional layer of authentication and security on top of standard ECDH encryption by incorporating a pre-shared key into the key derivation process.
 
 ### Features
 
 - **Two-level key ratchet** - Session keys derived per 100 messages, position keys per message
 - **Hybrid encryption** - Combines ECDH forward secrecy with PSK authentication
 - **Replay protection** - Counter-based sliding window prevents message replay
-- **Out-of-band key exchange** - URI scheme for sharing PSK keys
+- **Out-of-band key exchange** - URI scheme for sharing PSK keys (QR code compatible)
+
+### Quantum Defense-in-Depth
+
+PSK mode provides defense against future quantum attacks through **hybrid key derivation**:
+
+```
+symmetricKey = HKDF(
+  ikm = ephemeralECDH || currentPSK,
+  salt = ephemeralPublicKey,
+  info = "algochat-psk-v1" || senderPubKey || recipientPubKey
+)
+```
+
+The encryption key is derived from **both** the ephemeral ECDH shared secret and the ratcheted PSK, concatenated before HKDF. This means an attacker must break **both** layers:
+
+1. **ECDH only broken** (quantum computer): Attacker still needs the PSK
+2. **PSK only compromised**: Attacker still cannot break ECDH (per-message ephemeral keys)
+3. **Both compromised**: Only then can messages be decrypted
+
+This hybrid approach ensures that even if quantum computers eventually break X25519 ECDH, messages encrypted with PSK mode remain secure as long as the pre-shared key was exchanged securely.
+
+### Two-Level Ratcheting
+
+PSK mode derives per-message keys using a two-level ratchet:
+
+1. **Session derivation**: `sessionPSK = HKDF(initialPSK, sessionIndex)` where `sessionIndex = counter / 100`
+2. **Position derivation**: `currentPSK = HKDF(sessionPSK, position)` where `position = counter % 100`
+
+This creates 100-message session boundaries. Compromising a session PSK exposes at most 100 messages.
+
+### Exchange URI Format
+
+PSK exchange URIs are designed for QR code sharing:
+
+```
+algochat-psk://v1?addr=<algorand_address>&psk=<base64url>&label=<optional>
+```
+
+Use any QR library (e.g., `qrcode`) to encode the URI for easy scanning between devices.
 
 ### Usage
 
