@@ -219,7 +219,7 @@ This library implements the [AlgoChat Protocol v1](https://github.com/CorvidLabs
 
 ## PSK v1.1 Protocol
 
-The PSK (Pre-Shared Key) v1.1 protocol adds an additional layer of security on top of standard ECDH encryption by incorporating a pre-shared key into the key derivation process.
+The PSK (Pre-Shared Key) v1.1 protocol adds an additional layer of authentication and security on top of standard ECDH encryption by incorporating a pre-shared key into the key derivation process.
 
 ### Features
 
@@ -233,7 +233,11 @@ The PSK (Pre-Shared Key) v1.1 protocol adds an additional layer of security on t
 PSK mode provides defense against future quantum attacks through **hybrid key derivation**:
 
 ```
-symmetricKey = HKDF(ephemeralECDH || currentPSK)
+symmetricKey = HKDF(
+  ikm = ephemeralECDH || currentPSK,
+  salt = ephemeralPublicKey,
+  info = "algochat-psk-v1" || senderPubKey || recipientPubKey
+)
 ```
 
 The encryption key is derived from **both** the ephemeral ECDH shared secret and the ratcheted PSK, concatenated before HKDF. This means an attacker must break **both** layers:
