@@ -143,6 +143,12 @@ export interface PendingMessage {
     txid?: string;
 }
 
+/** Options for message encryption/decryption */
+export interface EncryptionOptions {
+    /** Pre-shared key (32 bytes) for hybrid PSK+ECDH encryption; confidentiality requires compromise of both PSK and ECDH secret */
+    psk?: Uint8Array;
+}
+
 /** Protocol constants */
 export const PROTOCOL = {
     VERSION: 0x01,

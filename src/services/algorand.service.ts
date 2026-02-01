@@ -5,7 +5,7 @@
  */
 
 import algosdk from 'algosdk';
-import type { Message, Conversation, SendResult, SendOptions, X25519KeyPair, DiscoveredKey } from '../models/types';
+import type { Message, Conversation, SendResult, SendOptions, X25519KeyPair, DiscoveredKey, EncryptionOptions } from '../models/types';
 import { encryptMessage, encryptReply, decryptMessage, encodeEnvelope, decodeEnvelope, isChatMessage } from '../crypto';
 import { ChatError } from '../errors/ChatError';
 
@@ -45,8 +45,9 @@ interface IndexerSearchResponse {
 export class AlgorandService {
     private algodClient: algosdk.Algodv2;
     private indexerClient: algosdk.Indexer;
+    private encryptionOptions?: EncryptionOptions;
 
-    constructor(config: AlgorandConfig) {
+    constructor(config: AlgorandConfig, encryptionOptions?: EncryptionOptions) {
         // Pass empty string for port when not specified to avoid algosdk defaulting to 8080
         this.algodClient = new algosdk.Algodv2(
             config.algodToken,
@@ -59,6 +60,8 @@ export class AlgorandService {
             config.indexerServer,
             config.indexerPort ?? ''
         );
+
+        this.encryptionOptions = encryptionOptions;
     }
 
     /**
@@ -81,7 +84,8 @@ export class AlgorandService {
         const envelope = encryptMessage(
             message,
             chatAccount.encryptionKeys.publicKey,
-            recipientPublicKey
+            recipientPublicKey,
+            this.encryptionOptions
         );
 
         // Encode to bytes
@@ -162,7 +166,8 @@ export class AlgorandService {
             replyToTxid,
             replyToPreview,
             chatAccount.encryptionKeys.publicKey,
-            recipientPublicKey
+            recipientPublicKey,
+            this.encryptionOptions
         );
 
         const note = encodeEnvelope(envelope);
@@ -287,7 +292,8 @@ export class AlgorandService {
                 const decrypted = decryptMessage(
                     envelope,
                     chatAccount.encryptionKeys.privateKey,
-                    chatAccount.encryptionKeys.publicKey
+                    chatAccount.encryptionKeys.publicKey,
+                    this.encryptionOptions
                 );
 
                 if (!decrypted) continue; // Key-publish, skip
@@ -382,7 +388,8 @@ export class AlgorandService {
         const envelope = encryptMessage(
             payload,
             chatAccount.encryptionKeys.publicKey,
-            chatAccount.encryptionKeys.publicKey // Self
+            chatAccount.encryptionKeys.publicKey, // Self
+            this.encryptionOptions
         );
 
         const note = encodeEnvelope(envelope);
@@ -444,7 +451,8 @@ export class AlgorandService {
                 const decrypted = decryptMessage(
                     envelope,
                     chatAccount.encryptionKeys.privateKey,
-                    chatAccount.encryptionKeys.publicKey
+                    chatAccount.encryptionKeys.publicKey,
+                    this.encryptionOptions
                 );
 
                 if (!decrypted) continue;

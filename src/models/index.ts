@@ -16,6 +16,7 @@ export type {
     DiscoveredKey,
     PendingMessage,
     PendingMessageStatus,
+    EncryptionOptions,
 } from './types';
 
 export { PROTOCOL, SendOptionsPresets } from './types';

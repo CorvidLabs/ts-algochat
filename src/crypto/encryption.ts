@@ -9,11 +9,26 @@ import { chacha20poly1305 } from '@noble/ciphers/chacha';
 import { hkdf } from '@noble/hashes/hkdf';
 import { sha256 } from '@noble/hashes/sha256';
 import { randomBytes } from '@noble/ciphers/webcrypto';
-import { ChatEnvelope, DecryptedContent, PROTOCOL } from '../models/types';
+import { ChatEnvelope, DecryptedContent, PROTOCOL, type EncryptionOptions } from '../models/types';
 import { generateEphemeralKeyPair, x25519ECDH, uint8ArrayEquals } from './keys';
 
 const ENCRYPTION_INFO_PREFIX = new TextEncoder().encode('AlgoChatV1');
 const SENDER_KEY_INFO_PREFIX = new TextEncoder().encode('AlgoChatV1-SenderKey');
+const PSK_INFO = new TextEncoder().encode('AlgoChatV1-PSK');
+
+/**
+ * Derives input keying material, mixing in PSK when provided.
+ *
+ * When a PSK is present, the ECDH shared secret is combined with the PSK
+ * via HKDF to produce hybrid keying material (similar to TLS 1.3 PSK-DHE).
+ */
+function deriveIKM(ecdhSecret: Uint8Array, psk?: Uint8Array): Uint8Array {
+    if (!psk || psk.length === 0) return ecdhSecret;
+    if (psk.length !== 32) {
+        throw new EncryptionError(`Invalid PSK length: expected 32 bytes, got ${psk.length}`);
+    }
+    return new Uint8Array(hkdf(sha256, ecdhSecret, psk, PSK_INFO, 32));
+}
 
 export class EncryptionError extends Error {
     constructor(message: string) {
@@ -31,7 +46,8 @@ export class EncryptionError extends Error {
 export function encryptMessage(
     plaintext: string,
     senderPublicKey: Uint8Array,
-    recipientPublicKey: Uint8Array
+    recipientPublicKey: Uint8Array,
+    options?: EncryptionOptions
 ): ChatEnvelope {
     const messageBytes = new TextEncoder().encode(plaintext);
 
@@ -44,9 +60,10 @@ export function encryptMessage(
 
     // Step 2: Derive symmetric key for recipient
     const sharedSecret = x25519ECDH(ephemeral.privateKey, recipientPublicKey);
+    const ikm = deriveIKM(sharedSecret, options?.psk);
 
     const info = concatBytes(ENCRYPTION_INFO_PREFIX, senderPublicKey, recipientPublicKey);
-    const symmetricKey = hkdf(sha256, sharedSecret, ephemeral.publicKey, info, 32);
+    const symmetricKey = hkdf(sha256, ikm, ephemeral.publicKey, info, 32);
 
     // Step 3: Generate random nonce
     const nonce = randomBytes(12);
@@ -57,9 +74,10 @@ export function encryptMessage(
 
     // Step 5: Encrypt symmetric key for sender (bidirectional decryption)
     const senderSharedSecret = x25519ECDH(ephemeral.privateKey, senderPublicKey);
+    const senderIkm = deriveIKM(senderSharedSecret, options?.psk);
 
     const senderInfo = concatBytes(SENDER_KEY_INFO_PREFIX, senderPublicKey);
-    const senderEncryptionKey = hkdf(sha256, senderSharedSecret, ephemeral.publicKey, senderInfo, 32);
+    const senderEncryptionKey = hkdf(sha256, senderIkm, ephemeral.publicKey, senderInfo, 32);
 
     const senderCipher = chacha20poly1305(senderEncryptionKey, nonce);
     const encryptedSenderKey = senderCipher.encrypt(symmetricKey);
@@ -83,7 +101,8 @@ export function encryptReply(
     replyToTxid: string,
     replyToPreview: string,
     senderPublicKey: Uint8Array,
-    recipientPublicKey: Uint8Array
+    recipientPublicKey: Uint8Array,
+    options?: EncryptionOptions
 ): ChatEnvelope {
     // Truncate preview to 80 chars
     const preview = replyToPreview.length > 80 ? replyToPreview.slice(0, 77) + '...' : replyToPreview;
@@ -96,7 +115,7 @@ export function encryptReply(
         },
     });
 
-    return encryptMessage(payload, senderPublicKey, recipientPublicKey);
+    return encryptMessage(payload, senderPublicKey, recipientPublicKey, options);
 }
 
 /**
@@ -108,16 +127,17 @@ export function encryptReply(
 export function decryptMessage(
     envelope: ChatEnvelope,
     myPrivateKey: Uint8Array,
-    myPublicKey: Uint8Array
+    myPublicKey: Uint8Array,
+    options?: EncryptionOptions
 ): DecryptedContent | null {
     const weAreSender = uint8ArrayEquals(myPublicKey, envelope.senderPublicKey);
 
     let plaintext: Uint8Array;
 
     if (weAreSender) {
-        plaintext = decryptAsSender(envelope, myPrivateKey, myPublicKey);
+        plaintext = decryptAsSender(envelope, myPrivateKey, myPublicKey, options);
     } else {
-        plaintext = decryptAsRecipient(envelope, myPrivateKey, myPublicKey);
+        plaintext = decryptAsRecipient(envelope, myPrivateKey, myPublicKey, options);
     }
 
     // Check for key-publish payload
@@ -134,13 +154,15 @@ export function decryptMessage(
 function decryptAsRecipient(
     envelope: ChatEnvelope,
     recipientPrivateKey: Uint8Array,
-    recipientPublicKey: Uint8Array
+    recipientPublicKey: Uint8Array,
+    options?: EncryptionOptions
 ): Uint8Array {
     // Derive symmetric key
     const sharedSecret = x25519ECDH(recipientPrivateKey, envelope.ephemeralPublicKey);
+    const ikm = deriveIKM(sharedSecret, options?.psk);
 
     const info = concatBytes(ENCRYPTION_INFO_PREFIX, envelope.senderPublicKey, recipientPublicKey);
-    const symmetricKey = hkdf(sha256, sharedSecret, envelope.ephemeralPublicKey, info, 32);
+    const symmetricKey = hkdf(sha256, ikm, envelope.ephemeralPublicKey, info, 32);
 
     // Decrypt message
     const cipher = chacha20poly1305(symmetricKey, envelope.nonce);
@@ -153,13 +175,15 @@ function decryptAsRecipient(
 function decryptAsSender(
     envelope: ChatEnvelope,
     senderPrivateKey: Uint8Array,
-    senderPublicKey: Uint8Array
+    senderPublicKey: Uint8Array,
+    options?: EncryptionOptions
 ): Uint8Array {
     // Step 1: Derive key to decrypt the symmetric key
     const sharedSecret = x25519ECDH(senderPrivateKey, envelope.ephemeralPublicKey);
+    const ikm = deriveIKM(sharedSecret, options?.psk);
 
     const senderInfo = concatBytes(SENDER_KEY_INFO_PREFIX, senderPublicKey);
-    const senderDecryptionKey = hkdf(sha256, sharedSecret, envelope.ephemeralPublicKey, senderInfo, 32);
+    const senderDecryptionKey = hkdf(sha256, ikm, envelope.ephemeralPublicKey, senderInfo, 32);
 
     // Step 2: Decrypt the symmetric key
     const senderCipher = chacha20poly1305(senderDecryptionKey, envelope.nonce);
