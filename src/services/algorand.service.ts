@@ -32,6 +32,7 @@ interface IndexerTransaction {
     note?: string;
     roundTime?: number;
     confirmedRound?: number;
+    fee?: number;
     paymentTransaction?: {
         receiver?: string;
         amount?: number;
@@ -122,6 +123,10 @@ export class AlgorandService {
 
         const result: SendResult = { txid, message: sentMessage };
 
+        // Capture fee from the built transaction
+        result.fee = Number(txn.fee);
+        sentMessage.fee = result.fee;
+
         // Wait for confirmation if requested
         if (options.waitForConfirmation) {
             const timeout = options.timeout ?? 10;
@@ -203,6 +208,10 @@ export class AlgorandService {
 
         const result: SendResult = { txid, message: sentMessage };
 
+        // Capture fee from the built transaction
+        result.fee = Number(txn.fee);
+        sentMessage.fee = result.fee;
+
         // Wait for confirmation if requested
         if (options.waitForConfirmation) {
             const timeout = options.timeout ?? 10;
@@ -253,7 +262,7 @@ export class AlgorandService {
             query = query.maxRound(beforeRound - 1);
         }
 
-        const response = await query.do() as IndexerSearchResponse;
+        const response = await query.do() as unknown as IndexerSearchResponse;
 
         for (const tx of response.transactions ?? []) {
             // Filter: payment transactions with notes
@@ -313,6 +322,7 @@ export class AlgorandService {
                           }
                         : undefined,
                     amount: tx.paymentTransaction?.amount,
+                    fee: tx.fee,
                 });
             } catch (error) {
                 // Log decryption failures for debugging - may indicate
@@ -347,7 +357,7 @@ export class AlgorandService {
             .searchForTransactions()
             .address(address)
             .limit(searchDepth)
-            .do() as IndexerSearchResponse;
+            .do() as unknown as IndexerSearchResponse;
 
         for (const tx of response.transactions ?? []) {
             // Only look at transactions SENT by this address
@@ -432,7 +442,7 @@ export class AlgorandService {
             .searchForTransactions()
             .address(chatAccount.address)
             .limit(limit)
-            .do() as IndexerSearchResponse;
+            .do() as unknown as IndexerSearchResponse;
 
         const conversationsMap = new Map<string, Conversation>();
 
@@ -483,6 +493,7 @@ export class AlgorandService {
                         ? { messageId: decrypted.replyToId, preview: decrypted.replyToPreview || '' }
                         : undefined,
                     amount: tx.paymentTransaction?.amount,
+                    fee: tx.fee,
                 };
 
                 if (!conversationsMap.has(otherParty)) {

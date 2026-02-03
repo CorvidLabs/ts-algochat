@@ -47,6 +47,8 @@ export interface Message {
     replyContext?: ReplyContext;
     /** Amount transferred in microAlgos */
     amount?: number;
+    /** Transaction fee in microAlgos */
+    fee?: number;
 }
 
 /** A conversation with another user */
@@ -62,6 +64,8 @@ export interface SendResult {
     txid: string;
     message: Message;
     confirmedRound?: number;
+    /** Transaction fee in microAlgos */
+    fee?: number;
 }
 
 /** Reply context used when sending */
