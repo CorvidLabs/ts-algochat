@@ -33,6 +33,7 @@ interface IndexerTransaction {
     roundTime?: number;
     confirmedRound?: number;
     fee?: number;
+    'intra-round-offset'?: number;
     paymentTransaction?: {
         receiver?: string;
         amount?: number;
@@ -323,6 +324,7 @@ export class AlgorandService {
                         : undefined,
                     amount: tx.paymentTransaction?.amount,
                     fee: tx.fee,
+                    intraRoundOffset: tx['intra-round-offset'],
                 });
             } catch (error) {
                 // Log decryption failures for debugging - may indicate
@@ -332,7 +334,13 @@ export class AlgorandService {
             }
         }
 
-        return messages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+        // Sort by timestamp, then by intra-round offset for messages in the same round
+        // (ensures group transaction chunks appear in correct order)
+        return messages.sort((a, b) => {
+            const timeDiff = a.timestamp.getTime() - b.timestamp.getTime();
+            if (timeDiff !== 0) return timeDiff;
+            return (a.intraRoundOffset ?? 0) - (b.intraRoundOffset ?? 0);
+        });
     }
 
     /**
@@ -494,6 +502,7 @@ export class AlgorandService {
                         : undefined,
                     amount: tx.paymentTransaction?.amount,
                     fee: tx.fee,
+                    intraRoundOffset: tx['intra-round-offset'],
                 };
 
                 if (!conversationsMap.has(otherParty)) {

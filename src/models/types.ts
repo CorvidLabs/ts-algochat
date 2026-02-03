@@ -49,6 +49,8 @@ export interface Message {
     amount?: number;
     /** Transaction fee in microAlgos */
     fee?: number;
+    /** Position within the confirmed round (for ordering group transactions) */
+    intraRoundOffset?: number;
 }
 
 /** A conversation with another user */
