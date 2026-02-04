@@ -5,7 +5,7 @@
  */
 
 import algosdk from 'algosdk';
-import type { Message, Conversation, SendResult, SendOptions, X25519KeyPair, DiscoveredKey } from '../models/types';
+import type { Message, Conversation, SendResult, SendOptions, X25519KeyPair, DiscoveredKey, EncryptionOptions } from '../models/types';
 import { encryptMessage, encryptReply, decryptMessage, encodeEnvelope, decodeEnvelope, isChatMessage } from '../crypto';
 import { ChatError } from '../errors/ChatError';
 
@@ -32,6 +32,8 @@ interface IndexerTransaction {
     note?: string;
     roundTime?: number;
     confirmedRound?: number;
+    fee?: number;
+    'intra-round-offset'?: number;
     paymentTransaction?: {
         receiver?: string;
         amount?: number;
@@ -45,8 +47,9 @@ interface IndexerSearchResponse {
 export class AlgorandService {
     private algodClient: algosdk.Algodv2;
     private indexerClient: algosdk.Indexer;
+    private encryptionOptions?: EncryptionOptions;
 
-    constructor(config: AlgorandConfig) {
+    constructor(config: AlgorandConfig, encryptionOptions?: EncryptionOptions) {
         // Pass empty string for port when not specified to avoid algosdk defaulting to 8080
         this.algodClient = new algosdk.Algodv2(
             config.algodToken,
@@ -59,6 +62,8 @@ export class AlgorandService {
             config.indexerServer,
             config.indexerPort ?? ''
         );
+
+        this.encryptionOptions = encryptionOptions;
     }
 
     /**
@@ -81,7 +86,8 @@ export class AlgorandService {
         const envelope = encryptMessage(
             message,
             chatAccount.encryptionKeys.publicKey,
-            recipientPublicKey
+            recipientPublicKey,
+            this.encryptionOptions
         );
 
         // Encode to bytes
@@ -117,6 +123,10 @@ export class AlgorandService {
         };
 
         const result: SendResult = { txid, message: sentMessage };
+
+        // Capture fee from the built transaction
+        result.fee = Number(txn.fee);
+        sentMessage.fee = result.fee;
 
         // Wait for confirmation if requested
         if (options.waitForConfirmation) {
@@ -162,7 +172,8 @@ export class AlgorandService {
             replyToTxid,
             replyToPreview,
             chatAccount.encryptionKeys.publicKey,
-            recipientPublicKey
+            recipientPublicKey,
+            this.encryptionOptions
         );
 
         const note = encodeEnvelope(envelope);
@@ -197,6 +208,10 @@ export class AlgorandService {
         };
 
         const result: SendResult = { txid, message: sentMessage };
+
+        // Capture fee from the built transaction
+        result.fee = Number(txn.fee);
+        sentMessage.fee = result.fee;
 
         // Wait for confirmation if requested
         if (options.waitForConfirmation) {
@@ -248,7 +263,7 @@ export class AlgorandService {
             query = query.maxRound(beforeRound - 1);
         }
 
-        const response = await query.do() as IndexerSearchResponse;
+        const response = await query.do() as unknown as IndexerSearchResponse;
 
         for (const tx of response.transactions ?? []) {
             // Filter: payment transactions with notes
@@ -287,7 +302,8 @@ export class AlgorandService {
                 const decrypted = decryptMessage(
                     envelope,
                     chatAccount.encryptionKeys.privateKey,
-                    chatAccount.encryptionKeys.publicKey
+                    chatAccount.encryptionKeys.publicKey,
+                    this.encryptionOptions
                 );
 
                 if (!decrypted) continue; // Key-publish, skip
@@ -307,6 +323,8 @@ export class AlgorandService {
                           }
                         : undefined,
                     amount: tx.paymentTransaction?.amount,
+                    fee: tx.fee,
+                    intraRoundOffset: tx['intra-round-offset'],
                 });
             } catch (error) {
                 // Log decryption failures for debugging - may indicate
@@ -316,7 +334,13 @@ export class AlgorandService {
             }
         }
 
-        return messages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+        // Sort by timestamp, then by intra-round offset for messages in the same round
+        // (ensures group transaction chunks appear in correct order)
+        return messages.sort((a, b) => {
+            const timeDiff = a.timestamp.getTime() - b.timestamp.getTime();
+            if (timeDiff !== 0) return timeDiff;
+            return (a.intraRoundOffset ?? 0) - (b.intraRoundOffset ?? 0);
+        });
     }
 
     /**
@@ -341,7 +365,7 @@ export class AlgorandService {
             .searchForTransactions()
             .address(address)
             .limit(searchDepth)
-            .do() as IndexerSearchResponse;
+            .do() as unknown as IndexerSearchResponse;
 
         for (const tx of response.transactions ?? []) {
             // Only look at transactions SENT by this address
@@ -382,7 +406,8 @@ export class AlgorandService {
         const envelope = encryptMessage(
             payload,
             chatAccount.encryptionKeys.publicKey,
-            chatAccount.encryptionKeys.publicKey // Self
+            chatAccount.encryptionKeys.publicKey, // Self
+            this.encryptionOptions
         );
 
         const note = encodeEnvelope(envelope);
@@ -425,7 +450,7 @@ export class AlgorandService {
             .searchForTransactions()
             .address(chatAccount.address)
             .limit(limit)
-            .do() as IndexerSearchResponse;
+            .do() as unknown as IndexerSearchResponse;
 
         const conversationsMap = new Map<string, Conversation>();
 
@@ -444,7 +469,8 @@ export class AlgorandService {
                 const decrypted = decryptMessage(
                     envelope,
                     chatAccount.encryptionKeys.privateKey,
-                    chatAccount.encryptionKeys.publicKey
+                    chatAccount.encryptionKeys.publicKey,
+                    this.encryptionOptions
                 );
 
                 if (!decrypted) continue;
@@ -475,6 +501,8 @@ export class AlgorandService {
                         ? { messageId: decrypted.replyToId, preview: decrypted.replyToPreview || '' }
                         : undefined,
                     amount: tx.paymentTransaction?.amount,
+                    fee: tx.fee,
+                    intraRoundOffset: tx['intra-round-offset'],
                 };
 
                 if (!conversationsMap.has(otherParty)) {

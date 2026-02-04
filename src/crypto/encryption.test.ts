@@ -202,3 +202,174 @@ describe('Full Round-Trip', () => {
         expect(decrypted?.text).toBe(original);
     });
 });
+
+describe('PSK Encryption', () => {
+    const psk = new Uint8Array(32).fill(0xaa);
+    const wrongPsk = new Uint8Array(32).fill(0xbb);
+    const senderKeys = deriveEncryptionKeys(new Uint8Array(32).fill(1));
+    const recipientKeys = deriveEncryptionKeys(new Uint8Array(32).fill(2));
+    const original = 'Hello with PSK!';
+
+    test('recipient can decrypt PSK-encrypted message', () => {
+        const envelope = encryptMessage(
+            original,
+            senderKeys.publicKey,
+            recipientKeys.publicKey,
+            { psk }
+        );
+
+        const decrypted = decryptMessage(
+            envelope,
+            recipientKeys.privateKey,
+            recipientKeys.publicKey,
+            { psk }
+        );
+
+        expect(decrypted).not.toBeNull();
+        expect(decrypted?.text).toBe(original);
+    });
+
+    test('sender can decrypt PSK-encrypted message (bidirectional)', () => {
+        const envelope = encryptMessage(
+            original,
+            senderKeys.publicKey,
+            recipientKeys.publicKey,
+            { psk }
+        );
+
+        const decrypted = decryptMessage(
+            envelope,
+            senderKeys.privateKey,
+            senderKeys.publicKey,
+            { psk }
+        );
+
+        expect(decrypted).not.toBeNull();
+        expect(decrypted?.text).toBe(original);
+    });
+
+    test('PSK-encrypted message cannot be decrypted without PSK', () => {
+        const envelope = encryptMessage(
+            original,
+            senderKeys.publicKey,
+            recipientKeys.publicKey,
+            { psk }
+        );
+
+        expect(() =>
+            decryptMessage(
+                envelope,
+                recipientKeys.privateKey,
+                recipientKeys.publicKey
+            )
+        ).toThrow();
+    });
+
+    test('non-PSK message cannot be decrypted with PSK', () => {
+        const envelope = encryptMessage(
+            original,
+            senderKeys.publicKey,
+            recipientKeys.publicKey
+        );
+
+        expect(() =>
+            decryptMessage(
+                envelope,
+                recipientKeys.privateKey,
+                recipientKeys.publicKey,
+                { psk }
+            )
+        ).toThrow();
+    });
+
+    test('wrong PSK causes decryption failure', () => {
+        const envelope = encryptMessage(
+            original,
+            senderKeys.publicKey,
+            recipientKeys.publicKey,
+            { psk }
+        );
+
+        expect(() =>
+            decryptMessage(
+                envelope,
+                recipientKeys.privateKey,
+                recipientKeys.publicKey,
+                { psk: wrongPsk }
+            )
+        ).toThrow();
+    });
+
+    test('empty PSK behaves like no PSK', () => {
+        const envelope = encryptMessage(
+            original,
+            senderKeys.publicKey,
+            recipientKeys.publicKey,
+            { psk: new Uint8Array(0) }
+        );
+
+        const decrypted = decryptMessage(
+            envelope,
+            recipientKeys.privateKey,
+            recipientKeys.publicKey
+        );
+
+        expect(decrypted).not.toBeNull();
+        expect(decrypted?.text).toBe(original);
+    });
+
+    test('invalid PSK length throws EncryptionError', () => {
+        const shortPsk = new Uint8Array(16).fill(0xcc);
+
+        expect(() =>
+            encryptMessage(
+                original,
+                senderKeys.publicKey,
+                recipientKeys.publicKey,
+                { psk: shortPsk }
+            )
+        ).toThrow(/Invalid PSK length/);
+    });
+
+    test('undefined PSK behaves like no PSK (backwards compatible)', () => {
+        const envelope = encryptMessage(
+            original,
+            senderKeys.publicKey,
+            recipientKeys.publicKey,
+            { psk: undefined }
+        );
+
+        // Should decrypt without any options
+        const decrypted = decryptMessage(
+            envelope,
+            recipientKeys.privateKey,
+            recipientKeys.publicKey
+        );
+
+        expect(decrypted).not.toBeNull();
+        expect(decrypted?.text).toBe(original);
+    });
+
+    test('full round-trip with PSK: encrypt → encode → decode → decrypt', () => {
+        const envelope = encryptMessage(
+            original,
+            senderKeys.publicKey,
+            recipientKeys.publicKey,
+            { psk }
+        );
+
+        const encoded = encodeEnvelope(envelope);
+        expect(isChatMessage(encoded)).toBe(true);
+
+        const decoded = decodeEnvelope(encoded);
+
+        const decrypted = decryptMessage(
+            decoded,
+            recipientKeys.privateKey,
+            recipientKeys.publicKey,
+            { psk }
+        );
+
+        expect(decrypted?.text).toBe(original);
+    });
+});

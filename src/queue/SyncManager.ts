@@ -201,7 +201,10 @@ export class SyncManager {
             const added = conv.merge(messages);
 
             // Update last fetched round
-            const maxRound = Math.max(...messages.map(m => m.confirmedRound));
+            const maxRound = messages.reduce((max, m) => {
+                const round = Number(m.confirmedRound);
+                return round > max ? round : max;
+            }, 0);
             conv.setLastFetchedRound(maxRound);
 
             if (added > 0) {

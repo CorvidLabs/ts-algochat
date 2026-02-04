@@ -6,7 +6,7 @@
  */
 
 import algosdk from 'algosdk';
-import type { Message, DiscoveredKey, MessageDirection } from '../models/types';
+import type { Message, DiscoveredKey, MessageDirection, EncryptionOptions } from '../models/types';
 import { decryptMessage, decodeEnvelope, isChatMessage } from '../crypto';
 import { ChatError } from '../errors/ChatError';
 import type { ChatAccount } from './algorand.service';
@@ -72,14 +72,16 @@ interface IndexerSearchResponse {
  */
 export class MessageIndexer {
     private indexerClient: algosdk.Indexer;
+    private encryptionOptions?: EncryptionOptions;
 
-    constructor(config: MessageIndexerConfig) {
+    constructor(config: MessageIndexerConfig, encryptionOptions?: EncryptionOptions) {
         // Pass empty string for port when not specified to avoid algosdk defaulting to 8080
         this.indexerClient = new algosdk.Indexer(
             config.indexerToken,
             config.indexerServer,
             config.indexerPort ?? ''
         );
+        this.encryptionOptions = encryptionOptions;
     }
 
     /**
@@ -342,7 +344,8 @@ export class MessageIndexer {
             const decrypted = decryptMessage(
                 envelope,
                 chatAccount.encryptionKeys.privateKey,
-                chatAccount.encryptionKeys.publicKey
+                chatAccount.encryptionKeys.publicKey,
+                this.encryptionOptions
             );
 
             if (!decrypted) {

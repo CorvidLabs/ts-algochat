@@ -33,6 +33,12 @@ describe('AlgorandService', () => {
             const service = new AlgorandService(configWithPorts);
             expect(service).toBeDefined();
         });
+
+        test('creates service with encryption options (PSK)', () => {
+            const psk = new Uint8Array(32).fill(0xaa);
+            const service = new AlgorandService(TEST_CONFIG, { psk });
+            expect(service).toBeDefined();
+        });
     });
 
     describe('message encryption integration', () => {

@@ -47,6 +47,10 @@ export interface Message {
     replyContext?: ReplyContext;
     /** Amount transferred in microAlgos */
     amount?: number;
+    /** Transaction fee in microAlgos */
+    fee?: number;
+    /** Position within the confirmed round (for ordering group transactions) */
+    intraRoundOffset?: number;
 }
 
 /** A conversation with another user */
@@ -62,6 +66,8 @@ export interface SendResult {
     txid: string;
     message: Message;
     confirmedRound?: number;
+    /** Transaction fee in microAlgos */
+    fee?: number;
 }
 
 /** Reply context used when sending */
@@ -141,6 +147,12 @@ export interface PendingMessage {
     lastError?: string;
     /** Transaction ID if sent */
     txid?: string;
+}
+
+/** Options for message encryption/decryption */
+export interface EncryptionOptions {
+    /** Pre-shared key (32 bytes) for hybrid PSK+ECDH encryption; confidentiality requires compromise of both PSK and ECDH secret */
+    psk?: Uint8Array;
 }
 
 /** Protocol constants */
