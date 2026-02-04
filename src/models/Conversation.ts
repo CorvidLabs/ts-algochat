@@ -118,7 +118,7 @@ export class Conversation {
      */
     public get highestRound(): number {
         return this._messages.reduce(
-            (max, m) => Math.max(max, m.confirmedRound),
+            (max, m) => { const r = Number(m.confirmedRound); return r > max ? r : max; },
             0
         );
     }

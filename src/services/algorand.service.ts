@@ -313,8 +313,8 @@ export class AlgorandService {
                     sender,
                     recipient: receiver,
                     content: decrypted.text,
-                    timestamp: new Date((tx.roundTime ?? 0) * 1000),
-                    confirmedRound: tx.confirmedRound ?? 0,
+                    timestamp: new Date(Number(tx.roundTime ?? 0) * 1000),
+                    confirmedRound: Number(tx.confirmedRound ?? 0),
                     direction,
                     replyContext: decrypted.replyToId
                         ? {
@@ -322,9 +322,9 @@ export class AlgorandService {
                               preview: decrypted.replyToPreview || '',
                           }
                         : undefined,
-                    amount: tx.paymentTransaction?.amount,
-                    fee: tx.fee,
-                    intraRoundOffset: tx['intra-round-offset'],
+                    amount: tx.paymentTransaction?.amount != null ? Number(tx.paymentTransaction.amount) : undefined,
+                    fee: tx.fee != null ? Number(tx.fee) : undefined,
+                    intraRoundOffset: tx['intra-round-offset'] != null ? Number(tx['intra-round-offset']) : undefined,
                 });
             } catch (error) {
                 // Log decryption failures for debugging - may indicate
@@ -383,8 +383,8 @@ export class AlgorandService {
                     isVerified: false,
                     address,
                     discoveredInTx: tx.id,
-                    discoveredAtRound: tx.confirmedRound ?? 0,
-                    discoveredAt: new Date((tx.roundTime ?? 0) * 1000),
+                    discoveredAtRound: Number(tx.confirmedRound ?? 0),
+                    discoveredAt: new Date(Number(tx.roundTime ?? 0) * 1000),
                 };
             } catch (error) {
                 // Log but continue searching - this transaction may be malformed
@@ -494,15 +494,15 @@ export class AlgorandService {
                     sender,
                     recipient: receiver,
                     content: decrypted.text,
-                    timestamp: new Date((tx.roundTime ?? 0) * 1000),
-                    confirmedRound: tx.confirmedRound ?? 0,
+                    timestamp: new Date(Number(tx.roundTime ?? 0) * 1000),
+                    confirmedRound: Number(tx.confirmedRound ?? 0),
                     direction,
                     replyContext: decrypted.replyToId
                         ? { messageId: decrypted.replyToId, preview: decrypted.replyToPreview || '' }
                         : undefined,
-                    amount: tx.paymentTransaction?.amount,
-                    fee: tx.fee,
-                    intraRoundOffset: tx['intra-round-offset'],
+                    amount: tx.paymentTransaction?.amount != null ? Number(tx.paymentTransaction.amount) : undefined,
+                    fee: tx.fee != null ? Number(tx.fee) : undefined,
+                    intraRoundOffset: tx['intra-round-offset'] != null ? Number(tx['intra-round-offset']) : undefined,
                 };
 
                 if (!conversationsMap.has(otherParty)) {
@@ -521,7 +521,7 @@ export class AlgorandService {
                 }
 
                 // Track the latest round
-                const round = tx.confirmedRound ?? 0;
+                const round = Number(tx.confirmedRound ?? 0);
                 if (!conv.lastFetchedRound || round > conv.lastFetchedRound) {
                     conv.lastFetchedRound = round;
                 }
