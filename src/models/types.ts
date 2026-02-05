@@ -155,6 +155,17 @@ export interface EncryptionOptions {
     psk?: Uint8Array;
 }
 
+/**
+ * Compare two messages for chronological sorting.
+ * Sorts by timestamp first, then by intra-round-offset to preserve
+ * correct ordering of group transaction chunks within the same round.
+ */
+export function compareMessages(a: Message, b: Message): number {
+    const timeDiff = a.timestamp.getTime() - b.timestamp.getTime();
+    if (timeDiff !== 0) return timeDiff;
+    return (a.intraRoundOffset ?? 0) - (b.intraRoundOffset ?? 0);
+}
+
 /** Protocol constants */
 export const PROTOCOL = {
     VERSION: 0x01,

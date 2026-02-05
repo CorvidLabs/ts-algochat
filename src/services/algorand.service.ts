@@ -5,6 +5,7 @@
  */
 
 import algosdk from 'algosdk';
+import { compareMessages } from '../models/types';
 import type { Message, Conversation, SendResult, SendOptions, X25519KeyPair, DiscoveredKey, EncryptionOptions } from '../models/types';
 import { encryptMessage, encryptReply, decryptMessage, encodeEnvelope, decodeEnvelope, isChatMessage } from '../crypto';
 import { ChatError } from '../errors/ChatError';
@@ -336,11 +337,7 @@ export class AlgorandService {
 
         // Sort by timestamp, then by intra-round offset for messages in the same round
         // (ensures group transaction chunks appear in correct order)
-        return messages.sort((a, b) => {
-            const timeDiff = a.timestamp.getTime() - b.timestamp.getTime();
-            if (timeDiff !== 0) return timeDiff;
-            return (a.intraRoundOffset ?? 0) - (b.intraRoundOffset ?? 0);
-        });
+        return messages.sort(compareMessages);
     }
 
     /**
@@ -533,7 +530,7 @@ export class AlgorandService {
         // Sort messages within each conversation
         const conversations = Array.from(conversationsMap.values());
         for (const conv of conversations) {
-            conv.messages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+            conv.messages.sort(compareMessages);
         }
 
         // Sort conversations by most recent message

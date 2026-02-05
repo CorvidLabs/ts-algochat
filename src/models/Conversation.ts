@@ -4,6 +4,7 @@
  * Provides a rich interface for managing conversations with helper methods.
  */
 
+import { compareMessages } from './types';
 import type { Message, MessageDirection } from './types';
 
 /**
@@ -31,7 +32,7 @@ export class Conversation {
     ) {
         if (messages.length > 0) {
             this._messages = [...messages].sort(
-                (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
+                compareMessages
             );
         }
     }
@@ -141,7 +142,7 @@ export class Conversation {
         }
 
         this._messages.push(message);
-        this._messages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+        this._messages.sort(compareMessages);
         return true;
     }
 
@@ -166,7 +167,7 @@ export class Conversation {
         }
 
         if (added > 0) {
-            this._messages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+            this._messages.sort(compareMessages);
         }
 
         return added;

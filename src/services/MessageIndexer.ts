@@ -6,6 +6,7 @@
  */
 
 import algosdk from 'algosdk';
+import { compareMessages } from '../models/types';
 import type { Message, DiscoveredKey, MessageDirection, EncryptionOptions } from '../models/types';
 import { decryptMessage, decodeEnvelope, isChatMessage } from '../crypto';
 import { ChatError } from '../errors/ChatError';
@@ -121,7 +122,7 @@ export class MessageIndexer {
             }
         }
 
-        return messages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+        return messages.sort(compareMessages);
     }
 
     /**

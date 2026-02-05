@@ -54,7 +54,7 @@ export type {
     EncryptionOptions,
 } from './models/types';
 
-export { PROTOCOL, SendOptionsPresets } from './models/types';
+export { PROTOCOL, SendOptionsPresets, compareMessages } from './models/types';
 
 // Conversation class
 export { Conversation } from './models/Conversation';
