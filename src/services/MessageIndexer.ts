@@ -260,8 +260,8 @@ export class MessageIndexer {
                     isVerified: false,
                     address,
                     discoveredInTx: tx.id,
-                    discoveredAtRound: tx.confirmedRound ?? 0,
-                    discoveredAt: new Date((tx.roundTime ?? 0) * 1000),
+                    discoveredAtRound: Number(tx.confirmedRound ?? 0),
+                    discoveredAt: new Date(Number(tx.roundTime ?? 0) * 1000),
                 };
             } catch {
                 // Log but continue searching
@@ -357,8 +357,8 @@ export class MessageIndexer {
                 sender,
                 recipient: receiver,
                 content: decrypted.text,
-                timestamp: new Date((tx.roundTime ?? 0) * 1000),
-                confirmedRound: tx.confirmedRound ?? 0,
+                timestamp: new Date(Number(tx.roundTime ?? 0) * 1000),
+                confirmedRound: Number(tx.confirmedRound ?? 0),
                 direction,
                 replyContext: decrypted.replyToId
                     ? {
