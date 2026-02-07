@@ -16,7 +16,7 @@ TypeScript implementation of the AlgoChat protocol for encrypted messaging on Al
 - **PSK Mode (v1.1)** - Hybrid ECDH + pre-shared key ratcheting for quantum defense-in-depth
 - **Bidirectional Decryption** - Sender can decrypt own messages
 - **Reply Support** - Thread conversations with context
-- **Zero Dependencies** - Uses @noble crypto libraries (audited)
+- **Minimal Dependencies** - Uses @noble crypto libraries (audited) + algosdk
 - **TypeScript First** - Full type safety
 
 ## Security Properties
@@ -148,7 +148,6 @@ const keys = deriveEncryptionKeys(seed);
 // Encrypt message
 const envelope = encryptMessage(
     'Hello!',
-    senderPrivateKey,
     senderPublicKey,
     recipientPublicKey
 );

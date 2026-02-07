@@ -5,7 +5,7 @@
  *
  * @example
  * ```typescript
- * import { AlgorandService, createChatAccountFromMnemonic, SendOptionsPresets } from '@algochat/web';
+ * import { AlgorandService, createChatAccountFromMnemonic, SendOptionsPresets } from '@corvidlabs/ts-algochat';
  *
  * // Initialize
  * const service = new AlgorandService({
