@@ -18,6 +18,15 @@ export interface AlgorandConfig {
     indexerToken?: string;
 }
 
+/** Read an env var if available (works in Node, Bun, Deno; no-ops in browsers). */
+function env(key: string): string | undefined {
+    try {
+        return typeof process !== 'undefined' ? process.env[key] : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
 /**
  * Create configuration for LocalNet (AlgoKit sandbox).
  */
@@ -31,26 +40,28 @@ export function localnet(): AlgorandConfig {
 }
 
 /**
- * Create configuration for TestNet (via Nodely).
+ * Create configuration for TestNet.
+ * Defaults to Nodely. Override with ALGOCHAT_ALGOD_URL / ALGOCHAT_INDEXER_URL env vars.
  */
 export function testnet(): AlgorandConfig {
     return {
-        algodUrl: 'https://testnet-api.4160.nodely.dev',
-        algodToken: '',
-        indexerUrl: 'https://testnet-idx.4160.nodely.dev',
-        indexerToken: '',
+        algodUrl: env('ALGOCHAT_ALGOD_URL') ?? 'https://testnet-api.4160.nodely.dev',
+        algodToken: env('ALGOCHAT_ALGOD_TOKEN') ?? '',
+        indexerUrl: env('ALGOCHAT_INDEXER_URL') ?? 'https://testnet-idx.4160.nodely.dev',
+        indexerToken: env('ALGOCHAT_INDEXER_TOKEN') ?? '',
     };
 }
 
 /**
- * Create configuration for MainNet (via Nodely).
+ * Create configuration for MainNet.
+ * Defaults to Nodely. Override with ALGOCHAT_ALGOD_URL / ALGOCHAT_INDEXER_URL env vars.
  */
 export function mainnet(): AlgorandConfig {
     return {
-        algodUrl: 'https://mainnet-api.4160.nodely.dev',
-        algodToken: '',
-        indexerUrl: 'https://mainnet-idx.4160.nodely.dev',
-        indexerToken: '',
+        algodUrl: env('ALGOCHAT_ALGOD_URL') ?? 'https://mainnet-api.4160.nodely.dev',
+        algodToken: env('ALGOCHAT_ALGOD_TOKEN') ?? '',
+        indexerUrl: env('ALGOCHAT_INDEXER_URL') ?? 'https://mainnet-idx.4160.nodely.dev',
+        indexerToken: env('ALGOCHAT_INDEXER_TOKEN') ?? '',
     };
 }
 
