@@ -3,6 +3,7 @@
  */
 
 import { describe, test, expect } from 'bun:test';
+import algosdk from 'algosdk';
 import {
     createChatAccountFromMnemonic,
     createRandomChatAccount,
@@ -60,6 +61,36 @@ describe('MnemonicService', () => {
             expect(uint8ArrayEquals(account1.encryptionKeys.publicKey, account2.encryptionKeys.publicKey)).toBe(false);
         });
 
+        test('creates account with ed25519PublicKey (32 bytes)', () => {
+            const chatAccount = createChatAccountFromMnemonic(TEST_MNEMONIC);
+
+            expect(chatAccount.ed25519PublicKey).toBeDefined();
+            expect(chatAccount.ed25519PublicKey).toBeInstanceOf(Uint8Array);
+            expect(chatAccount.ed25519PublicKey.length).toBe(32);
+        });
+
+        test('same mnemonic produces same ed25519PublicKey', () => {
+            const account1 = createChatAccountFromMnemonic(TEST_MNEMONIC);
+            const account2 = createChatAccountFromMnemonic(TEST_MNEMONIC);
+
+            expect(uint8ArrayEquals(account1.ed25519PublicKey, account2.ed25519PublicKey)).toBe(true);
+        });
+
+        test('different mnemonics produce different ed25519PublicKey values', () => {
+            const { mnemonic: otherMnemonic } = createRandomChatAccount();
+            const account1 = createChatAccountFromMnemonic(TEST_MNEMONIC);
+            const account2 = createChatAccountFromMnemonic(otherMnemonic);
+
+            expect(uint8ArrayEquals(account1.ed25519PublicKey, account2.ed25519PublicKey)).toBe(false);
+        });
+
+        test('ed25519PublicKey matches key extracted from Algorand address', () => {
+            const chatAccount = createChatAccountFromMnemonic(TEST_MNEMONIC);
+            const addressPublicKey = algosdk.Address.fromString(chatAccount.address).publicKey;
+
+            expect(uint8ArrayEquals(chatAccount.ed25519PublicKey, addressPublicKey)).toBe(true);
+        });
+
         test('throws on invalid mnemonic', () => {
             expect(() => createChatAccountFromMnemonic('invalid mnemonic')).toThrow();
         });
@@ -88,12 +119,27 @@ describe('MnemonicService', () => {
             expect(validateMnemonic(mnemonic)).toBe(true);
         });
 
+        test('creates account with ed25519PublicKey (32 bytes)', () => {
+            const { account } = createRandomChatAccount();
+
+            expect(account.ed25519PublicKey).toBeDefined();
+            expect(account.ed25519PublicKey).toBeInstanceOf(Uint8Array);
+            expect(account.ed25519PublicKey.length).toBe(32);
+        });
+
         test('mnemonic can recreate same account', () => {
             const { account: original, mnemonic } = createRandomChatAccount();
             const recreated = createChatAccountFromMnemonic(mnemonic);
 
             expect(recreated.address).toBe(original.address);
             expect(uint8ArrayEquals(recreated.encryptionKeys.publicKey, original.encryptionKeys.publicKey)).toBe(true);
+        });
+
+        test('mnemonic can recreate same ed25519PublicKey', () => {
+            const { account: original, mnemonic } = createRandomChatAccount();
+            const recreated = createChatAccountFromMnemonic(mnemonic);
+
+            expect(uint8ArrayEquals(recreated.ed25519PublicKey, original.ed25519PublicKey)).toBe(true);
         });
 
         test('generates unique accounts each time', () => {
