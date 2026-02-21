@@ -76,6 +76,15 @@ export async function discoverEncryptionKey(
     // Search for transactions from this address
     const transactions = await indexer.searchTransactions(address, undefined, searchDepth);
 
+    // Decode the Ed25519 public key once before the loop; if the address is
+    // malformed we can still search but skip signature verification.
+    let ed25519PublicKey: Uint8Array | undefined;
+    try {
+        ed25519PublicKey = decodeAlgorandAddress(address);
+    } catch {
+        // Invalid address format — continue without verification
+    }
+
     // Look for key announcements in the note field
     for (const tx of transactions) {
         // Must be sent by this address
@@ -93,8 +102,6 @@ export async function discoverEncryptionKey(
             continue;
         }
 
-        // Decode the Algorand address to get the Ed25519 public key for verification
-        const ed25519PublicKey = decodeAlgorandAddress(address);
         const key = parseKeyAnnouncement(tx.note, ed25519PublicKey);
         if (key !== undefined) {
             return key;

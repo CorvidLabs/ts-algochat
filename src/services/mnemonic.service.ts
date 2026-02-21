@@ -5,8 +5,7 @@
  */
 
 import algosdk from 'algosdk';
-import { deriveEncryptionKeys } from '../crypto';
-import { getPublicKey } from '../crypto/signature';
+import { deriveEncryptionKeys, getPublicKey } from '../crypto';
 import type { ChatAccount } from './algorand.service';
 
 /**
