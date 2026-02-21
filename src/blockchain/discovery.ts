@@ -4,9 +4,22 @@
  * Functions for discovering and verifying encryption keys on the blockchain.
  */
 
+import algosdk from 'algosdk';
 import type { DiscoveredKey } from '../models/types';
 import type { IndexerClient } from './interfaces';
 import { verifyEncryptionKey } from '../crypto';
+
+/**
+ * Decodes an Algorand address string to extract the 32-byte Ed25519 public key.
+ *
+ * Algorand addresses are Base32-encoded: 32 bytes public key + 4 bytes checksum.
+ *
+ * @param address The Algorand address string (58 characters)
+ * @returns The 32-byte Ed25519 public key
+ */
+function decodeAlgorandAddress(address: string): Uint8Array {
+    return algosdk.Address.fromString(address).publicKey;
+}
 
 /**
  * Parse a key announcement from a transaction note.
@@ -80,10 +93,9 @@ export async function discoverEncryptionKey(
             continue;
         }
 
-        // Try to parse as key announcement
-        // Note: For proper verification, we'd need the Ed25519 public key
-        // from the Algorand address, which requires decoding the address
-        const key = parseKeyAnnouncement(tx.note);
+        // Decode the Algorand address to get the Ed25519 public key for verification
+        const ed25519PublicKey = decodeAlgorandAddress(address);
+        const key = parseKeyAnnouncement(tx.note, ed25519PublicKey);
         if (key !== undefined) {
             return key;
         }

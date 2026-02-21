@@ -6,6 +6,7 @@
 
 import algosdk from 'algosdk';
 import { deriveEncryptionKeys } from '../crypto';
+import { getPublicKey } from '../crypto/signature';
 import type { ChatAccount } from './algorand.service';
 
 /**
@@ -22,10 +23,14 @@ export function createChatAccountFromMnemonic(mnemonic: string): ChatAccount {
     // Derive X25519 encryption keys
     const encryptionKeys = deriveEncryptionKeys(seed);
 
+    // Derive the Ed25519 public key from the seed
+    const ed25519PublicKey = getPublicKey(seed);
+
     return {
         address: account.addr.toString(),
         account,
         encryptionKeys,
+        ed25519PublicKey,
     };
 }
 
@@ -39,11 +44,15 @@ export function createRandomChatAccount(): { account: ChatAccount; mnemonic: str
     const seed = account.sk.slice(0, 32);
     const encryptionKeys = deriveEncryptionKeys(seed);
 
+    // Derive the Ed25519 public key from the seed
+    const ed25519PublicKey = getPublicKey(seed);
+
     return {
         account: {
             address: account.addr.toString(),
             account,
             encryptionKeys,
+            ed25519PublicKey,
         },
         mnemonic,
     };

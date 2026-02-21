@@ -22,6 +22,9 @@ export interface ChatAccount {
     address: string;
     account: algosdk.Account;
     encryptionKeys: X25519KeyPair;
+    /** The Ed25519 public key derived from the account (32 bytes).
+     *  Used for signature verification. Extracted from the Algorand address. */
+    ed25519PublicKey: Uint8Array;
 }
 
 /** Indexer transaction response shape (subset of fields we use) */
