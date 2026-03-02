@@ -18,6 +18,7 @@ import type {
 } from '../models/types';
 import { decodeEnvelope, isChatMessage } from '../crypto/envelope';
 import { decryptMessage } from '../crypto';
+import { discoverEncryptionKey } from './discovery';
 
 /** Default page size for fetching messages */
 export const DEFAULT_PAGE_SIZE = 50;
@@ -213,6 +214,17 @@ export class MessageIndexer {
         address: string,
         searchDepth: number = DEFAULT_SEARCH_DEPTH
     ): Promise<DiscoveredKey> {
+        // First, try to find a signed key announcement (self-transfer with signature)
+        const verifiedKey = await discoverEncryptionKey(
+            this.indexerClient,
+            address,
+            searchDepth
+        );
+        if (verifiedKey) {
+            return verifiedKey;
+        }
+
+        // Fall back to extracting from message envelopes (unverified)
         const transactions = await this.indexerClient.searchTransactions(
             address,
             undefined,
@@ -230,7 +242,7 @@ export class MessageIndexer {
 
                 return {
                     publicKey: envelope.senderPublicKey,
-                    isVerified: true,
+                    isVerified: false,
                 };
             } catch {
                 // Continue searching
