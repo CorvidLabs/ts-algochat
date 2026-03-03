@@ -230,7 +230,7 @@ export class MessageIndexer {
 
                 return {
                     publicKey: envelope.senderPublicKey,
-                    isVerified: true,
+                    isVerified: false,
                 };
             } catch {
                 // Continue searching
