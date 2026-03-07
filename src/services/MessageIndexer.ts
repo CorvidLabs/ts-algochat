@@ -219,57 +219,65 @@ export class MessageIndexer {
     }
 
     /**
-     * Discovers a user's encryption public key
+     * Discovers a user's encryption public key.
      *
-     * Returns full metadata about where the key was discovered.
+     * Uses paginated search via the indexer's next-token cursor to walk
+     * the full transaction history without a static depth limit.
      *
      * @param address - Algorand address to discover key for
-     * @param searchDepth - Maximum transactions to search (default: 1000)
+     * @param maxDepth - Maximum transactions to search (default: 0 = exhaustive)
      */
     public async findPublicKey(
         address: string,
-        searchDepth = 1000
+        maxDepth = 0
     ): Promise<DiscoveredKey> {
-        const response = await this.indexerClient
-            .searchForTransactions()
-            .address(address)
-            .limit(searchDepth)
-            .do() as IndexerSearchResponse;
+        const pageSize = 200;
+        let nextToken: string | undefined;
+        let searched = 0;
 
-        for (const tx of response.transactions ?? []) {
-            // Only look at transactions SENT by this address
-            if (tx.sender !== address) {
-                continue;
+        do {
+            let query = this.indexerClient
+                .searchForTransactions()
+                .address(address)
+                .limit(maxDepth > 0 ? Math.min(pageSize, maxDepth - searched) : pageSize);
+
+            if (nextToken) {
+                query = query.nextToken(nextToken);
             }
 
-            if (!tx.note) {
-                continue;
+            const response = await query.do() as IndexerSearchResponse;
+            const transactions = response.transactions ?? [];
+
+            for (const tx of transactions) {
+                if (tx.sender !== address) continue;
+                if (!tx.note) continue;
+
+                const noteBytes = base64ToBytes(tx.note);
+                if (!isChatMessage(noteBytes)) continue;
+
+                try {
+                    const envelope = decodeEnvelope(noteBytes);
+                    return {
+                        publicKey: envelope.senderPublicKey,
+                        isVerified: false,
+                        address,
+                        discoveredInTx: tx.id,
+                        discoveredAtRound: Number(tx.confirmedRound ?? 0),
+                        discoveredAt: new Date(Number(tx.roundTime ?? 0) * 1000),
+                    };
+                } catch {
+                    continue;
+                }
             }
 
-            const noteBytes = base64ToBytes(tx.note);
+            searched += transactions.length;
+            nextToken = response.nextToken;
 
-            if (!isChatMessage(noteBytes)) {
-                continue;
-            }
+            if (maxDepth > 0 && searched >= maxDepth) break;
+            if (transactions.length === 0) break;
+        } while (nextToken);
 
-            try {
-                const envelope = decodeEnvelope(noteBytes);
-
-                return {
-                    publicKey: envelope.senderPublicKey,
-                    isVerified: false,
-                    address,
-                    discoveredInTx: tx.id,
-                    discoveredAtRound: Number(tx.confirmedRound ?? 0),
-                    discoveredAt: new Date(Number(tx.roundTime ?? 0) * 1000),
-                };
-            } catch {
-                // Log but continue searching
-                continue;
-            }
-        }
-
-        throw ChatError.publicKeyNotFound(address, searchDepth);
+        throw ChatError.publicKeyNotFound(address, searched);
     }
 
     /**
