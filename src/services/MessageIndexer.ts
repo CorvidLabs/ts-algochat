@@ -224,11 +224,11 @@ export class MessageIndexer {
      * Returns full metadata about where the key was discovered.
      *
      * @param address - Algorand address to discover key for
-     * @param searchDepth - Maximum transactions to search (default: 200)
+     * @param searchDepth - Maximum transactions to search (default: 1000)
      */
     public async findPublicKey(
         address: string,
-        searchDepth = 200
+        searchDepth = 1000
     ): Promise<DiscoveredKey> {
         const response = await this.indexerClient
             .searchForTransactions()

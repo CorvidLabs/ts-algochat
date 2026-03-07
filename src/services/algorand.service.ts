@@ -351,9 +351,9 @@ export class AlgorandService {
      * Discovers a user's encryption public key from their transaction history
      *
      * @param address - Algorand address to discover key for
-     * @param searchDepth - Maximum transactions to search (default: 200)
+     * @param searchDepth - Maximum transactions to search (default: 1000)
      */
-    async discoverPublicKey(address: string, searchDepth = 200): Promise<Uint8Array> {
+    async discoverPublicKey(address: string, searchDepth = 1000): Promise<Uint8Array> {
         const result = await this.discoverPublicKeyWithMetadata(address, searchDepth);
         return result.publicKey;
     }
@@ -362,9 +362,9 @@ export class AlgorandService {
      * Discovers a user's encryption public key with full metadata
      *
      * @param address - Algorand address to discover key for
-     * @param searchDepth - Maximum transactions to search (default: 200)
+     * @param searchDepth - Maximum transactions to search (default: 1000)
      */
-    async discoverPublicKeyWithMetadata(address: string, searchDepth = 200): Promise<DiscoveredKey> {
+    async discoverPublicKeyWithMetadata(address: string, searchDepth = 1000): Promise<DiscoveredKey> {
         const response = await this.indexerClient
             .searchForTransactions()
             .address(address)

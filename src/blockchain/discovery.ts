@@ -65,13 +65,13 @@ export function parseKeyAnnouncement(
  *
  * @param indexer The indexer client to use
  * @param address The Algorand address to find the key for
- * @param searchDepth Maximum transactions to search (default: 100)
+ * @param searchDepth Maximum transactions to search (default: 1000)
  * @returns DiscoveredKey if found, undefined otherwise
  */
 export async function discoverEncryptionKey(
     indexer: IndexerClient,
     address: string,
-    searchDepth = 100
+    searchDepth = 1000
 ): Promise<DiscoveredKey | undefined> {
     // Search for transactions from this address
     const transactions = await indexer.searchTransactions(address, undefined, searchDepth);
@@ -121,7 +121,7 @@ export async function discoverEncryptionKey(
  * @param address The Algorand address to find the key for
  * @param isChatMessage Function to check if a note is an AlgoChat message
  * @param decodeEnvelope Function to decode envelope and extract public key
- * @param searchDepth Maximum transactions to search (default: 200)
+ * @param searchDepth Maximum transactions to search (default: 1000)
  * @returns DiscoveredKey if found, undefined otherwise
  */
 export async function discoverEncryptionKeyFromMessages(
@@ -129,7 +129,7 @@ export async function discoverEncryptionKeyFromMessages(
     address: string,
     isChatMessage: (note: Uint8Array) => boolean,
     decodeEnvelope: (note: Uint8Array) => { senderPublicKey: Uint8Array },
-    searchDepth = 200
+    searchDepth = 1000
 ): Promise<DiscoveredKey | undefined> {
     const transactions = await indexer.searchTransactions(address, undefined, searchDepth);
 
