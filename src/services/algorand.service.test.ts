@@ -6,9 +6,11 @@
  */
 
 import { describe, test, expect } from 'bun:test';
+import algosdk from 'algosdk';
 import { AlgorandService, type AlgorandConfig } from './algorand.service';
 import { createRandomChatAccount } from './mnemonic.service';
 import { encryptMessage, encodeEnvelope } from '../crypto';
+import { deriveEncryptionKeys } from '../crypto/keys';
 
 const TEST_CONFIG: AlgorandConfig = {
     algodToken: 'test-token',
@@ -184,20 +186,36 @@ describe('AlgorandService', () => {
     });
 
     describe('discoverPublicKey error handling', () => {
-        test('throws descriptive error when key not found', async () => {
-            const service = new AlgorandService(TEST_CONFIG);
-            const fakeAddress = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ';
-
-            // Mock the indexer to return empty results
-            const mockIndexer = {
+        /** Build a chainable mock indexer that returns pages sequentially. */
+        function chainableMock(pages: Array<{ transactions: unknown[]; 'next-token'?: string }>) {
+            let callIndex = 0;
+            return {
                 searchForTransactions: () => ({
                     address: () => ({
                         limit: () => ({
-                            do: async () => ({ transactions: [] }),
+                            nextToken: () => ({
+                                do: async () => {
+                                    const page = pages[callIndex] ?? { transactions: [] };
+                                    callIndex++;
+                                    return page;
+                                },
+                            }),
+                            do: async () => {
+                                const page = pages[callIndex] ?? { transactions: [] };
+                                callIndex++;
+                                return page;
+                            },
                         }),
                     }),
                 }),
             };
+        }
+
+        test('throws descriptive error when key not found', async () => {
+            const service = new AlgorandService(TEST_CONFIG);
+            const fakeAddress = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ';
+
+            const mockIndexer = chainableMock([{ transactions: [] }]);
 
             // @ts-expect-error - accessing private property for testing
             service.indexerClient = mockIndexer;
@@ -205,6 +223,58 @@ describe('AlgorandService', () => {
             await expect(service.discoverPublicKey(fakeAddress)).rejects.toThrow(
                 /Public key not found for/
             );
+        });
+
+        test('paginates through multiple pages to find key', async () => {
+            const service = new AlgorandService(TEST_CONFIG);
+            const fakeAddress = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ';
+
+            // Create a valid AlgoChat envelope note
+            const { encryptionKeys } = (() => {
+                const account = algosdk.generateAccount();
+                const seed = account.sk.slice(0, 32);
+                const keys = deriveEncryptionKeys(seed);
+                return { encryptionKeys: keys };
+            })();
+
+            const envelope = encryptMessage(
+                'test',
+                encryptionKeys.publicKey,
+                encryptionKeys.publicKey
+            );
+            const noteBytes = encodeEnvelope(envelope);
+            // Base64 encode for the mock
+            const noteBase64 = Buffer.from(noteBytes).toString('base64');
+
+            const mockIndexer = chainableMock([
+                // First page: no matching transactions
+                {
+                    transactions: [
+                        { id: 'tx1', sender: 'OTHER', note: undefined },
+                    ],
+                    'next-token': 'page2',
+                },
+                // Second page: has the key
+                {
+                    transactions: [
+                        {
+                            id: 'tx2',
+                            sender: fakeAddress,
+                            note: noteBase64,
+                            confirmedRound: 100,
+                            roundTime: 1700000000,
+                        },
+                    ],
+                },
+            ]);
+
+            // @ts-expect-error - accessing private property for testing
+            service.indexerClient = mockIndexer;
+
+            const result = await service.discoverPublicKeyWithMetadata(fakeAddress);
+            expect(result.publicKey.length).toBe(32);
+            expect(result.isVerified).toBe(false);
+            expect(result.discoveredInTx).toBe('tx2');
         });
     });
 });

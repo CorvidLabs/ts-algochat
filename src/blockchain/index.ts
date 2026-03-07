@@ -9,6 +9,7 @@ export type {
     AlgorandConfig,
     TransactionInfo,
     NoteTransaction,
+    PaginatedTransactions,
     SuggestedParams,
     AccountInfo,
 } from './types';

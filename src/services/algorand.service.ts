@@ -46,6 +46,7 @@ interface IndexerTransaction {
 
 interface IndexerSearchResponse {
     transactions?: IndexerTransaction[];
+    'next-token'?: string;
 }
 
 export class AlgorandService {
@@ -348,56 +349,77 @@ export class AlgorandService {
     }
 
     /**
-     * Discovers a user's encryption public key from their transaction history
+     * Discovers a user's encryption public key from their transaction history.
+     *
+     * Uses paginated search to walk the full transaction history when needed.
      *
      * @param address - Algorand address to discover key for
-     * @param searchDepth - Maximum transactions to search (default: 1000)
+     * @param maxDepth - Maximum transactions to search (default: 0 = exhaustive)
      */
-    async discoverPublicKey(address: string, searchDepth = 1000): Promise<Uint8Array> {
-        const result = await this.discoverPublicKeyWithMetadata(address, searchDepth);
+    async discoverPublicKey(address: string, maxDepth = 0): Promise<Uint8Array> {
+        const result = await this.discoverPublicKeyWithMetadata(address, maxDepth);
         return result.publicKey;
     }
 
     /**
-     * Discovers a user's encryption public key with full metadata
+     * Discovers a user's encryption public key with full metadata.
+     *
+     * Uses paginated search via the indexer's next-token cursor to walk
+     * the full transaction history without a static depth limit.
      *
      * @param address - Algorand address to discover key for
-     * @param searchDepth - Maximum transactions to search (default: 1000)
+     * @param maxDepth - Maximum transactions to search (default: 0 = exhaustive)
      */
-    async discoverPublicKeyWithMetadata(address: string, searchDepth = 1000): Promise<DiscoveredKey> {
-        const response = await this.indexerClient
-            .searchForTransactions()
-            .address(address)
-            .limit(searchDepth)
-            .do() as unknown as IndexerSearchResponse;
+    async discoverPublicKeyWithMetadata(address: string, maxDepth = 0): Promise<DiscoveredKey> {
+        const pageSize = 200;
+        let nextToken: string | undefined;
+        let searched = 0;
 
-        for (const tx of response.transactions ?? []) {
-            // Only look at transactions SENT by this address
-            if (tx.sender !== address) continue;
-            if (!tx.note) continue;
+        do {
+            let query = this.indexerClient
+                .searchForTransactions()
+                .address(address)
+                .limit(maxDepth > 0 ? Math.min(pageSize, maxDepth - searched) : pageSize);
 
-            const noteBytes = base64ToBytes(tx.note);
-
-            if (!isChatMessage(noteBytes)) continue;
-
-            try {
-                const envelope = decodeEnvelope(noteBytes);
-                return {
-                    publicKey: envelope.senderPublicKey,
-                    isVerified: false,
-                    address,
-                    discoveredInTx: tx.id,
-                    discoveredAtRound: Number(tx.confirmedRound ?? 0),
-                    discoveredAt: new Date(Number(tx.roundTime ?? 0) * 1000),
-                };
-            } catch (error) {
-                // Log but continue searching - this transaction may be malformed
-                console.warn(`[AlgoChat] Failed to decode envelope from ${tx.id}:`, error);
-                continue;
+            if (nextToken) {
+                query = query.nextToken(nextToken);
             }
-        }
 
-        throw ChatError.publicKeyNotFound(address, searchDepth);
+            const response = await query.do() as unknown as IndexerSearchResponse;
+            const transactions = response.transactions ?? [];
+
+            for (const tx of transactions) {
+                if (tx.sender !== address) continue;
+                if (!tx.note) continue;
+
+                const noteBytes = base64ToBytes(tx.note);
+                if (!isChatMessage(noteBytes)) continue;
+
+                try {
+                    const envelope = decodeEnvelope(noteBytes);
+                    return {
+                        publicKey: envelope.senderPublicKey,
+                        isVerified: false,
+                        address,
+                        discoveredInTx: tx.id,
+                        discoveredAtRound: Number(tx.confirmedRound ?? 0),
+                        discoveredAt: new Date(Number(tx.roundTime ?? 0) * 1000),
+                    };
+                } catch (error) {
+                    console.warn(`[AlgoChat] Failed to decode envelope from ${tx.id}:`, error);
+                    continue;
+                }
+            }
+
+            searched += transactions.length;
+            nextToken = response['next-token'];
+
+            // Stop if we've reached the max depth or there are no more pages
+            if (maxDepth > 0 && searched >= maxDepth) break;
+            if (transactions.length === 0) break;
+        } while (nextToken);
+
+        throw ChatError.publicKeyNotFound(address, searched);
     }
 
     /**

@@ -63,19 +63,19 @@ export function parseKeyAnnouncement(
  * A key announcement is a self-transfer (sender === receiver) with the X25519
  * public key in the note field.
  *
+ * When the indexer client supports paginated search, this walks the full
+ * transaction history using cursor-based pagination.
+ *
  * @param indexer The indexer client to use
  * @param address The Algorand address to find the key for
- * @param searchDepth Maximum transactions to search (default: 1000)
+ * @param maxDepth Maximum transactions to search (default: 0 = exhaustive)
  * @returns DiscoveredKey if found, undefined otherwise
  */
 export async function discoverEncryptionKey(
     indexer: IndexerClient,
     address: string,
-    searchDepth = 1000
+    maxDepth = 0
 ): Promise<DiscoveredKey | undefined> {
-    // Search for transactions from this address
-    const transactions = await indexer.searchTransactions(address, undefined, searchDepth);
-
     // Decode the Ed25519 public key once before the loop; if the address is
     // malformed we can still search but skip signature verification.
     let ed25519PublicKey: Uint8Array | undefined;
@@ -85,30 +85,49 @@ export async function discoverEncryptionKey(
         // Invalid address format — continue without verification
     }
 
-    // Look for key announcements in the note field
-    for (const tx of transactions) {
-        // Must be sent by this address
-        if (tx.sender !== address) {
-            continue;
-        }
+    // Use paginated search if available, otherwise fall back to single-call search
+    if (indexer.searchTransactionsPaginated) {
+        const pageSize = 200;
+        let nextToken: string | undefined;
+        let searched = 0;
 
-        // Check if this is a key announcement (self-transfer with note)
-        if (tx.receiver !== address) {
-            continue;
-        }
+        do {
+            const limit = maxDepth > 0 ? Math.min(pageSize, maxDepth - searched) : pageSize;
+            const page = await indexer.searchTransactionsPaginated(address, limit, nextToken);
 
-        // Must have a note
-        if (!tx.note || tx.note.length < 32) {
-            continue;
-        }
+            for (const tx of page.transactions) {
+                const key = matchKeyAnnouncement(tx, address, ed25519PublicKey);
+                if (key !== undefined) return key;
+            }
 
-        const key = parseKeyAnnouncement(tx.note, ed25519PublicKey);
-        if (key !== undefined) {
-            return key;
+            searched += page.transactions.length;
+            nextToken = page.nextToken;
+
+            if (maxDepth > 0 && searched >= maxDepth) break;
+            if (page.transactions.length === 0) break;
+        } while (nextToken);
+    } else {
+        // Fallback: single search with depth limit
+        const transactions = await indexer.searchTransactions(address, undefined, maxDepth || 1000);
+        for (const tx of transactions) {
+            const key = matchKeyAnnouncement(tx, address, ed25519PublicKey);
+            if (key !== undefined) return key;
         }
     }
 
     return undefined;
+}
+
+/** Check if a transaction is a key announcement and return the key if so. */
+function matchKeyAnnouncement(
+    tx: import('./types').NoteTransaction,
+    address: string,
+    ed25519PublicKey?: Uint8Array
+): DiscoveredKey | undefined {
+    if (tx.sender !== address) return undefined;
+    if (tx.receiver !== address) return undefined;
+    if (!tx.note || tx.note.length < 32) return undefined;
+    return parseKeyAnnouncement(tx.note, ed25519PublicKey);
 }
 
 /**
@@ -117,11 +136,14 @@ export async function discoverEncryptionKey(
  * This extracts the sender's public key from the envelope header of any
  * AlgoChat message they've sent.
  *
+ * When the indexer client supports paginated search, this walks the full
+ * transaction history using cursor-based pagination.
+ *
  * @param indexer The indexer client to use
  * @param address The Algorand address to find the key for
  * @param isChatMessage Function to check if a note is an AlgoChat message
  * @param decodeEnvelope Function to decode envelope and extract public key
- * @param searchDepth Maximum transactions to search (default: 1000)
+ * @param maxDepth Maximum transactions to search (default: 0 = exhaustive)
  * @returns DiscoveredKey if found, undefined otherwise
  */
 export async function discoverEncryptionKeyFromMessages(
@@ -129,23 +151,12 @@ export async function discoverEncryptionKeyFromMessages(
     address: string,
     isChatMessage: (note: Uint8Array) => boolean,
     decodeEnvelope: (note: Uint8Array) => { senderPublicKey: Uint8Array },
-    searchDepth = 1000
+    maxDepth = 0
 ): Promise<DiscoveredKey | undefined> {
-    const transactions = await indexer.searchTransactions(address, undefined, searchDepth);
-
-    for (const tx of transactions) {
-        // Only look at transactions SENT by this address
-        if (tx.sender !== address) {
-            continue;
-        }
-
-        if (!tx.note || tx.note.length === 0) {
-            continue;
-        }
-
-        if (!isChatMessage(tx.note)) {
-            continue;
-        }
+    const matchMessage = (tx: import('./types').NoteTransaction): DiscoveredKey | undefined => {
+        if (tx.sender !== address) return undefined;
+        if (!tx.note || tx.note.length === 0) return undefined;
+        if (!isChatMessage(tx.note)) return undefined;
 
         try {
             const envelope = decodeEnvelope(tx.note);
@@ -154,8 +165,35 @@ export async function discoverEncryptionKeyFromMessages(
                 isVerified: false, // Not verified via signature
             };
         } catch {
-            // Malformed envelope, continue searching
-            continue;
+            return undefined;
+        }
+    };
+
+    if (indexer.searchTransactionsPaginated) {
+        const pageSize = 200;
+        let nextToken: string | undefined;
+        let searched = 0;
+
+        do {
+            const limit = maxDepth > 0 ? Math.min(pageSize, maxDepth - searched) : pageSize;
+            const page = await indexer.searchTransactionsPaginated(address, limit, nextToken);
+
+            for (const tx of page.transactions) {
+                const key = matchMessage(tx);
+                if (key !== undefined) return key;
+            }
+
+            searched += page.transactions.length;
+            nextToken = page.nextToken;
+
+            if (maxDepth > 0 && searched >= maxDepth) break;
+            if (page.transactions.length === 0) break;
+        } while (nextToken);
+    } else {
+        const transactions = await indexer.searchTransactions(address, undefined, maxDepth || 1000);
+        for (const tx of transactions) {
+            const key = matchMessage(tx);
+            if (key !== undefined) return key;
         }
     }
 
