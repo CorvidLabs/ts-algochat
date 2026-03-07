@@ -8,6 +8,7 @@
 import type {
     TransactionInfo,
     NoteTransaction,
+    PaginatedTransactions,
     SuggestedParams,
     AccountInfo,
 } from './types';
@@ -63,6 +64,19 @@ export interface IndexerClient {
         afterRound?: number,
         limit?: number
     ): Promise<NoteTransaction[]>;
+
+    /**
+     * Search for transactions with cursor-based pagination.
+     * Returns transactions and an optional next-token for fetching more.
+     * @param address Address to search for
+     * @param limit Maximum number of transactions per page
+     * @param nextToken Cursor token from a previous call
+     */
+    searchTransactionsPaginated?(
+        address: string,
+        limit?: number,
+        nextToken?: string
+    ): Promise<PaginatedTransactions>;
 
     /**
      * Search for transactions between two addresses.

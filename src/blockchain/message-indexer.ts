@@ -202,38 +202,65 @@ export class MessageIndexer {
      * Finds a user's encryption public key from their past transactions.
      *
      * Searches the user's transaction history to find an AlgoChat message
-     * containing their public key.
+     * containing their public key. Uses paginated search when the indexer
+     * supports it.
      *
      * @param address - The user's Algorand address
-     * @param searchDepth - Number of transactions to search (default: 200)
+     * @param maxDepth - Maximum transactions to search (default: 0 = exhaustive)
      * @returns The discovered key
      * @throws PublicKeyNotFoundError if no chat history exists
      */
     async findPublicKey(
         address: string,
-        searchDepth: number = DEFAULT_SEARCH_DEPTH
+        maxDepth = 0
     ): Promise<DiscoveredKey> {
-        const transactions = await this.indexerClient.searchTransactions(
-            address,
-            undefined,
-            searchDepth
-        );
-
-        for (const tx of transactions) {
-            // Only look at transactions sent by this address
-            if (tx.sender !== address) continue;
-            if (!tx.note || tx.note.length < 2) continue;
-            if (!isChatMessage(tx.note)) continue;
+        const matchTx = (tx: NoteTransaction): DiscoveredKey | undefined => {
+            if (tx.sender !== address) return undefined;
+            if (!tx.note || tx.note.length < 2) return undefined;
+            if (!isChatMessage(tx.note)) return undefined;
 
             try {
                 const envelope = decodeEnvelope(tx.note);
-
                 return {
                     publicKey: envelope.senderPublicKey,
-                    isVerified: true,
+                    isVerified: false, // senderPublicKey is self-asserted, not verified
                 };
             } catch {
-                // Continue searching
+                return undefined;
+            }
+        };
+
+        if (this.indexerClient.searchTransactionsPaginated) {
+            const pageSize = DEFAULT_SEARCH_DEPTH;
+            let nextToken: string | undefined;
+            let searched = 0;
+
+            do {
+                const limit = maxDepth > 0 ? Math.min(pageSize, maxDepth - searched) : pageSize;
+                const page = await this.indexerClient.searchTransactionsPaginated(address, limit, nextToken);
+
+                for (const tx of page.transactions) {
+                    const key = matchTx(tx);
+                    if (key !== undefined) return key;
+                }
+
+                searched += page.transactions.length;
+                nextToken = page.nextToken;
+
+                if (maxDepth > 0 && searched >= maxDepth) break;
+                if (page.transactions.length === 0) break;
+            } while (nextToken);
+        } else {
+            // Fallback to single-call search
+            const transactions = await this.indexerClient.searchTransactions(
+                address,
+                undefined,
+                maxDepth || 1000
+            );
+
+            for (const tx of transactions) {
+                const key = matchTx(tx);
+                if (key !== undefined) return key;
             }
         }
 

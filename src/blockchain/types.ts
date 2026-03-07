@@ -109,6 +109,16 @@ export interface NoteTransaction {
 }
 
 /**
+ * Paginated transaction result with optional cursor token.
+ */
+export interface PaginatedTransactions {
+    /** Transactions in this page. */
+    transactions: NoteTransaction[];
+    /** Cursor token for the next page, if more results are available. */
+    nextToken?: string;
+}
+
+/**
  * Suggested transaction parameters.
  */
 export interface SuggestedParams {
