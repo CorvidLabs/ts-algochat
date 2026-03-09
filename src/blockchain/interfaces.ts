@@ -8,6 +8,7 @@
 import type {
     TransactionInfo,
     NoteTransaction,
+    TransactionPage,
     SuggestedParams,
     AccountInfo,
 } from './types';
@@ -63,6 +64,23 @@ export interface IndexerClient {
         afterRound?: number,
         limit?: number
     ): Promise<NoteTransaction[]>;
+
+    /**
+     * Search for transactions with pagination support.
+     *
+     * Returns a page of results with an optional next-token cursor for
+     * fetching subsequent pages. Implementations should map to the Algorand
+     * indexer's `next` query parameter.
+     *
+     * Optional — when not provided, discovery functions fall back to the
+     * non-paginated {@link searchTransactions} with the given limit.
+     */
+    searchTransactionPages?(
+        address: string,
+        afterRound?: number,
+        limit?: number,
+        nextToken?: string
+    ): Promise<TransactionPage>;
 
     /**
      * Search for transactions between two addresses.
