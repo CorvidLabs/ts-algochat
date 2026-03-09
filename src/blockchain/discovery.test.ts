@@ -8,7 +8,7 @@ import { parseKeyAnnouncement, discoverEncryptionKey } from './discovery';
 import { signEncryptionKey, getPublicKey } from '../crypto';
 import { deriveEncryptionKeys } from '../crypto/keys';
 import type { IndexerClient } from './interfaces';
-import type { NoteTransaction } from './types';
+import type { NoteTransaction, TransactionPage } from './types';
 
 /** Generate a test account and return its seed, ed25519 public key, and address. */
 function makeTestAccount() {
@@ -27,6 +27,24 @@ function mockIndexer(transactions: NoteTransaction[]): IndexerClient {
         searchTransactionsBetween: async () => [],
         getTransaction: async () => transactions[0],
         waitForIndexer: async () => transactions[0],
+    };
+}
+
+/** Build a mock IndexerClient with paginated support. Pages are served in order. */
+function mockPaginatedIndexer(pages: TransactionPage[]): IndexerClient {
+    let callIndex = 0;
+    return {
+        searchTransactions: async () => {
+            throw new Error('should use searchTransactionPages');
+        },
+        searchTransactionPages: async () => {
+            const page = pages[callIndex] ?? { transactions: [] };
+            callIndex++;
+            return page;
+        },
+        searchTransactionsBetween: async () => [],
+        getTransaction: async () => pages[0].transactions[0],
+        waitForIndexer: async () => pages[0].transactions[0],
     };
 }
 
@@ -227,6 +245,81 @@ describe('discoverEncryptionKey', () => {
         const result = await discoverEncryptionKey(indexer, badAddress);
         expect(result).toBeDefined();
         expect(result!.isVerified).toBe(false);
+    });
+});
+
+describe('discoverEncryptionKey (paginated)', () => {
+    test('finds key on second page', async () => {
+        const { seed, encryptionKeys, address } = makeTestAccount();
+        const other = makeTestAccount();
+        const signature = signEncryptionKey(encryptionKeys.publicKey, seed);
+
+        const note = new Uint8Array(96);
+        note.set(encryptionKeys.publicKey, 0);
+        note.set(signature, 32);
+
+        const indexer = mockPaginatedIndexer([
+            {
+                transactions: [
+                    { txid: 'tx-noise', sender: other.address, receiver: address, note: new Uint8Array(32), confirmedRound: 99, roundTime: 1700000000 },
+                ],
+                nextToken: 'page2',
+            },
+            {
+                transactions: [
+                    { txid: 'tx-key', sender: address, receiver: address, note, confirmedRound: 50, roundTime: 1699999000 },
+                ],
+            },
+        ]);
+
+        const result = await discoverEncryptionKey(indexer, address);
+        expect(result).toBeDefined();
+        expect(result!.isVerified).toBe(true);
+    });
+
+    test('returns undefined after exhausting all pages', async () => {
+        const { address } = makeTestAccount();
+        const other = makeTestAccount();
+
+        const indexer = mockPaginatedIndexer([
+            {
+                transactions: [
+                    { txid: 'tx1', sender: other.address, receiver: address, note: new Uint8Array(32), confirmedRound: 100, roundTime: 1700000000 },
+                ],
+                nextToken: 'page2',
+            },
+            { transactions: [] },
+        ]);
+
+        const result = await discoverEncryptionKey(indexer, address);
+        expect(result).toBeUndefined();
+    });
+
+    test('stops paginating once key is found (does not fetch extra pages)', async () => {
+        const { encryptionKeys, address } = makeTestAccount();
+        let pagesRequested = 0;
+
+        const indexer: IndexerClient = {
+            searchTransactions: async () => { throw new Error('unused'); },
+            searchTransactionPages: async () => {
+                pagesRequested++;
+                if (pagesRequested === 1) {
+                    return {
+                        transactions: [
+                            { txid: 'tx1', sender: address, receiver: address, note: encryptionKeys.publicKey, confirmedRound: 100, roundTime: 1700000000 },
+                        ],
+                        nextToken: 'more',
+                    };
+                }
+                return { transactions: [] };
+            },
+            searchTransactionsBetween: async () => [],
+            getTransaction: async () => ({ txid: '', sender: '', receiver: '', note: new Uint8Array(), confirmedRound: 0, roundTime: 0 }),
+            waitForIndexer: async () => ({ txid: '', sender: '', receiver: '', note: new Uint8Array(), confirmedRound: 0, roundTime: 0 }),
+        };
+
+        await discoverEncryptionKey(indexer, address);
+        expect(pagesRequested).toBe(1);
     });
 });
 

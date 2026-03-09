@@ -109,6 +109,16 @@ export interface NoteTransaction {
 }
 
 /**
+ * A page of transaction results with an optional cursor for fetching the next page.
+ */
+export interface TransactionPage {
+    /** The transactions in this page. */
+    transactions: NoteTransaction[];
+    /** Opaque cursor token for fetching the next page. Undefined when no more pages. */
+    nextToken?: string;
+}
+
+/**
  * Suggested transaction parameters.
  */
 export interface SuggestedParams {

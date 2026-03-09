@@ -59,23 +59,23 @@ export function parseKeyAnnouncement(
 /**
  * Discover the encryption public key for an Algorand address.
  *
- * This searches the indexer for key announcement transactions from the address.
+ * When the indexer client supports {@link IndexerClient.searchTransactionPages},
+ * this paginates through the full transaction history until a key announcement
+ * is found. Otherwise it falls back to a single query with the given limit.
+ *
  * A key announcement is a self-transfer (sender === receiver) with the X25519
  * public key in the note field.
  *
  * @param indexer The indexer client to use
  * @param address The Algorand address to find the key for
- * @param searchDepth Maximum transactions to search (default: 1000)
+ * @param pageSize Transactions to fetch per page (default: 1000)
  * @returns DiscoveredKey if found, undefined otherwise
  */
 export async function discoverEncryptionKey(
     indexer: IndexerClient,
     address: string,
-    searchDepth = 1000
+    pageSize = 1000
 ): Promise<DiscoveredKey | undefined> {
-    // Search for transactions from this address
-    const transactions = await indexer.searchTransactions(address, undefined, searchDepth);
-
     // Decode the Ed25519 public key once before the loop; if the address is
     // malformed we can still search but skip signature verification.
     let ed25519PublicKey: Uint8Array | undefined;
@@ -85,29 +85,37 @@ export async function discoverEncryptionKey(
         // Invalid address format — continue without verification
     }
 
-    // Look for key announcements in the note field
-    for (const tx of transactions) {
-        // Must be sent by this address
-        if (tx.sender !== address) {
-            continue;
-        }
-
-        // Check if this is a key announcement (self-transfer with note)
-        if (tx.receiver !== address) {
-            continue;
-        }
-
-        // Must have a note
-        if (!tx.note || tx.note.length < 32) {
-            continue;
-        }
-
-        const key = parseKeyAnnouncement(tx.note, ed25519PublicKey);
-        if (key !== undefined) {
-            return key;
-        }
+    // Paginate if the indexer supports it, otherwise single-shot
+    if (indexer.searchTransactionPages) {
+        let nextToken: string | undefined;
+        do {
+            const page = await indexer.searchTransactionPages(address, undefined, pageSize, nextToken);
+            const result = scanForKeyAnnouncement(page.transactions, address, ed25519PublicKey);
+            if (result) return result;
+            nextToken = page.nextToken;
+        } while (nextToken);
+    } else {
+        const transactions = await indexer.searchTransactions(address, undefined, pageSize);
+        return scanForKeyAnnouncement(transactions, address, ed25519PublicKey);
     }
 
+    return undefined;
+}
+
+/** Scan a batch of transactions for a key announcement from the given address. */
+function scanForKeyAnnouncement(
+    transactions: import('./types').NoteTransaction[],
+    address: string,
+    ed25519PublicKey?: Uint8Array
+): DiscoveredKey | undefined {
+    for (const tx of transactions) {
+        if (tx.sender !== address) continue;
+        if (tx.receiver !== address) continue;
+        if (!tx.note || tx.note.length < 32) continue;
+
+        const key = parseKeyAnnouncement(tx.note, ed25519PublicKey);
+        if (key !== undefined) return key;
+    }
     return undefined;
 }
 
@@ -115,13 +123,13 @@ export async function discoverEncryptionKey(
  * Discover encryption key from a chat message transaction.
  *
  * This extracts the sender's public key from the envelope header of any
- * AlgoChat message they've sent.
+ * AlgoChat message they've sent. Paginates when the indexer supports it.
  *
  * @param indexer The indexer client to use
  * @param address The Algorand address to find the key for
  * @param isChatMessage Function to check if a note is an AlgoChat message
  * @param decodeEnvelope Function to decode envelope and extract public key
- * @param searchDepth Maximum transactions to search (default: 1000)
+ * @param pageSize Transactions to fetch per page (default: 1000)
  * @returns DiscoveredKey if found, undefined otherwise
  */
 export async function discoverEncryptionKeyFromMessages(
@@ -129,35 +137,45 @@ export async function discoverEncryptionKeyFromMessages(
     address: string,
     isChatMessage: (note: Uint8Array) => boolean,
     decodeEnvelope: (note: Uint8Array) => { senderPublicKey: Uint8Array },
-    searchDepth = 1000
+    pageSize = 1000
 ): Promise<DiscoveredKey | undefined> {
-    const transactions = await indexer.searchTransactions(address, undefined, searchDepth);
+    const scan = (transactions: import('./types').NoteTransaction[]) =>
+        scanForMessageKey(transactions, address, isChatMessage, decodeEnvelope);
 
+    if (indexer.searchTransactionPages) {
+        let nextToken: string | undefined;
+        do {
+            const page = await indexer.searchTransactionPages(address, undefined, pageSize, nextToken);
+            const result = scan(page.transactions);
+            if (result) return result;
+            nextToken = page.nextToken;
+        } while (nextToken);
+    } else {
+        const transactions = await indexer.searchTransactions(address, undefined, pageSize);
+        return scan(transactions);
+    }
+
+    return undefined;
+}
+
+/** Scan a batch of transactions for a chat message containing a public key. */
+function scanForMessageKey(
+    transactions: import('./types').NoteTransaction[],
+    address: string,
+    isChatMessage: (note: Uint8Array) => boolean,
+    decodeEnvelope: (note: Uint8Array) => { senderPublicKey: Uint8Array }
+): DiscoveredKey | undefined {
     for (const tx of transactions) {
-        // Only look at transactions SENT by this address
-        if (tx.sender !== address) {
-            continue;
-        }
-
-        if (!tx.note || tx.note.length === 0) {
-            continue;
-        }
-
-        if (!isChatMessage(tx.note)) {
-            continue;
-        }
+        if (tx.sender !== address) continue;
+        if (!tx.note || tx.note.length === 0) continue;
+        if (!isChatMessage(tx.note)) continue;
 
         try {
             const envelope = decodeEnvelope(tx.note);
-            return {
-                publicKey: envelope.senderPublicKey,
-                isVerified: false, // Not verified via signature
-            };
+            return { publicKey: envelope.senderPublicKey, isVerified: false };
         } catch {
-            // Malformed envelope, continue searching
             continue;
         }
     }
-
     return undefined;
 }

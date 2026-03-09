@@ -134,6 +134,7 @@ export type {
     AlgorandConfig as BlockchainConfig,
     TransactionInfo,
     NoteTransaction,
+    TransactionPage,
     SuggestedParams,
     AccountInfo,
 } from './blockchain';
