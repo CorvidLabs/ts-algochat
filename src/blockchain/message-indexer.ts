@@ -201,33 +201,78 @@ export class MessageIndexer {
     /**
      * Finds a user's encryption public key from their past transactions.
      *
-     * Searches the user's transaction history to find an AlgoChat message
-     * containing their public key.
+     * Uses paginated search when the indexer supports it, allowing exhaustive
+     * searches through large transaction histories. Falls back to a single
+     * batch with the given search depth.
      *
      * @param address - The user's Algorand address
-     * @param searchDepth - Number of transactions to search (default: 200)
+     * @param searchDepth - Max transactions to search (default: undefined = exhaustive)
      * @returns The discovered key
      * @throws PublicKeyNotFoundError if no chat history exists
      */
     async findPublicKey(
         address: string,
-        searchDepth: number = DEFAULT_SEARCH_DEPTH
+        searchDepth?: number
     ): Promise<DiscoveredKey> {
+        // Paginated path
+        if (this.indexerClient.searchTransactionsPaginated) {
+            const pageSize = 100;
+            let searched = 0;
+            let nextToken: string | undefined;
+
+            while (true) {
+                const limit = searchDepth
+                    ? Math.min(pageSize, searchDepth - searched)
+                    : pageSize;
+
+                if (limit <= 0) break;
+
+                const result = await this.indexerClient.searchTransactionsPaginated(
+                    address,
+                    { limit, nextToken }
+                );
+
+                for (const tx of result.transactions) {
+                    if (tx.sender !== address) continue;
+                    if (!tx.note || tx.note.length < 2) continue;
+                    if (!isChatMessage(tx.note)) continue;
+
+                    try {
+                        const envelope = decodeEnvelope(tx.note);
+                        return {
+                            publicKey: envelope.senderPublicKey,
+                            isVerified: false,
+                        };
+                    } catch {
+                        // Continue searching
+                    }
+                }
+
+                searched += result.transactions.length;
+                nextToken = result.nextToken;
+
+                if (!nextToken || result.transactions.length === 0) break;
+                if (searchDepth && searched >= searchDepth) break;
+            }
+
+            throw new PublicKeyNotFoundError(address);
+        }
+
+        // Fallback: single batch
+        const limit = searchDepth ?? DEFAULT_SEARCH_DEPTH;
         const transactions = await this.indexerClient.searchTransactions(
             address,
             undefined,
-            searchDepth
+            limit
         );
 
         for (const tx of transactions) {
-            // Only look at transactions sent by this address
             if (tx.sender !== address) continue;
             if (!tx.note || tx.note.length < 2) continue;
             if (!isChatMessage(tx.note)) continue;
 
             try {
                 const envelope = decodeEnvelope(tx.note);
-
                 return {
                     publicKey: envelope.senderPublicKey,
                     isVerified: false,

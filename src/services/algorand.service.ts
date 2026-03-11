@@ -46,14 +46,23 @@ interface IndexerTransaction {
 
 interface IndexerSearchResponse {
     transactions?: IndexerTransaction[];
+    'next-token'?: string;
 }
+
+/** Default page size for paginated indexer queries */
+const DISCOVERY_PAGE_SIZE = 100;
+
+/** Default max entries in the public key LRU cache */
+const DEFAULT_KEY_CACHE_SIZE = 128;
 
 export class AlgorandService {
     private algodClient: algosdk.Algodv2;
     private indexerClient: algosdk.Indexer;
     private encryptionOptions?: EncryptionOptions;
+    private keyCache: Map<string, DiscoveredKey> = new Map();
+    private keyCacheMaxSize: number;
 
-    constructor(config: AlgorandConfig, encryptionOptions?: EncryptionOptions) {
+    constructor(config: AlgorandConfig, encryptionOptions?: EncryptionOptions, keyCacheMaxSize = DEFAULT_KEY_CACHE_SIZE) {
         // Pass empty string for port when not specified to avoid algosdk defaulting to 8080
         this.algodClient = new algosdk.Algodv2(
             config.algodToken,
@@ -68,6 +77,7 @@ export class AlgorandService {
         );
 
         this.encryptionOptions = encryptionOptions;
+        this.keyCacheMaxSize = keyCacheMaxSize;
     }
 
     /**
@@ -348,56 +358,131 @@ export class AlgorandService {
     }
 
     /**
-     * Discovers a user's encryption public key from their transaction history
+     * Discovers a user's encryption public key from their transaction history.
+     *
+     * Uses paginated indexer queries to search exhaustively. Results are cached
+     * in an LRU cache to avoid repeated full scans for the same address.
      *
      * @param address - Algorand address to discover key for
-     * @param searchDepth - Maximum transactions to search (default: 1000)
+     * @param searchDepth - Max transactions to search (default: undefined = exhaustive)
      */
-    async discoverPublicKey(address: string, searchDepth = 1000): Promise<Uint8Array> {
+    async discoverPublicKey(address: string, searchDepth?: number): Promise<Uint8Array> {
         const result = await this.discoverPublicKeyWithMetadata(address, searchDepth);
         return result.publicKey;
     }
 
     /**
-     * Discovers a user's encryption public key with full metadata
+     * Discovers a user's encryption public key with full metadata.
+     *
+     * Uses paginated indexer queries with the `next-token` cursor to walk the
+     * full transaction history. Falls back to a single batch when `searchDepth`
+     * is provided for backward compatibility.
      *
      * @param address - Algorand address to discover key for
-     * @param searchDepth - Maximum transactions to search (default: 1000)
+     * @param searchDepth - Max transactions to search (default: undefined = exhaustive)
      */
-    async discoverPublicKeyWithMetadata(address: string, searchDepth = 1000): Promise<DiscoveredKey> {
-        const response = await this.indexerClient
-            .searchForTransactions()
-            .address(address)
-            .limit(searchDepth)
-            .do() as unknown as IndexerSearchResponse;
+    async discoverPublicKeyWithMetadata(address: string, searchDepth?: number): Promise<DiscoveredKey> {
+        // Check cache first
+        const cached = this.keyCache.get(address);
+        if (cached) return cached;
 
-        for (const tx of response.transactions ?? []) {
-            // Only look at transactions SENT by this address
-            if (tx.sender !== address) continue;
-            if (!tx.note) continue;
-
-            const noteBytes = base64ToBytes(tx.note);
-
-            if (!isChatMessage(noteBytes)) continue;
-
-            try {
-                const envelope = decodeEnvelope(noteBytes);
-                return {
-                    publicKey: envelope.senderPublicKey,
-                    isVerified: false,
-                    address,
-                    discoveredInTx: tx.id,
-                    discoveredAtRound: Number(tx.confirmedRound ?? 0),
-                    discoveredAt: new Date(Number(tx.roundTime ?? 0) * 1000),
-                };
-            } catch (error) {
-                // Log but continue searching - this transaction may be malformed
-                console.warn(`[AlgoChat] Failed to decode envelope from ${tx.id}:`, error);
-                continue;
-            }
+        const result = await this.paginatedKeyDiscovery(address, searchDepth);
+        if (!result) {
+            throw ChatError.publicKeyNotFound(address, searchDepth ?? -1);
         }
 
-        throw ChatError.publicKeyNotFound(address, searchDepth);
+        // Cache the result (LRU eviction)
+        this.cacheKey(address, result);
+        return result;
+    }
+
+    /**
+     * Clears the public key cache, or removes a specific address.
+     */
+    clearKeyCache(address?: string): void {
+        if (address) {
+            this.keyCache.delete(address);
+        } else {
+            this.keyCache.clear();
+        }
+    }
+
+    /**
+     * Paginated key discovery using the indexer's next-token cursor.
+     */
+    private async paginatedKeyDiscovery(
+        address: string,
+        maxDepth?: number
+    ): Promise<DiscoveredKey | undefined> {
+        let searched = 0;
+        let nextToken: string | undefined;
+
+        while (true) {
+            const limit = maxDepth
+                ? Math.min(DISCOVERY_PAGE_SIZE, maxDepth - searched)
+                : DISCOVERY_PAGE_SIZE;
+
+            if (limit <= 0) break;
+
+            let query = this.indexerClient
+                .searchForTransactions()
+                .address(address)
+                .limit(limit);
+
+            if (nextToken) {
+                query = query.nextToken(nextToken);
+            }
+
+            const response = await query.do() as unknown as IndexerSearchResponse;
+
+            for (const tx of response.transactions ?? []) {
+                if (tx.sender !== address) continue;
+                if (!tx.note) continue;
+
+                const noteBytes = base64ToBytes(tx.note);
+                if (!isChatMessage(noteBytes)) continue;
+
+                try {
+                    const envelope = decodeEnvelope(noteBytes);
+                    return {
+                        publicKey: envelope.senderPublicKey,
+                        isVerified: false,
+                        address,
+                        discoveredInTx: tx.id,
+                        discoveredAtRound: Number(tx.confirmedRound ?? 0),
+                        discoveredAt: new Date(Number(tx.roundTime ?? 0) * 1000),
+                    };
+                } catch (error) {
+                    console.warn(`[AlgoChat] Failed to decode envelope from ${tx.id}:`, error);
+                    continue;
+                }
+            }
+
+            searched += (response.transactions ?? []).length;
+            nextToken = response['next-token'];
+
+            if (!nextToken || (response.transactions ?? []).length === 0) break;
+            if (maxDepth && searched >= maxDepth) break;
+        }
+
+        return undefined;
+    }
+
+    /**
+     * Adds a key to the LRU cache, evicting the oldest entry if at capacity.
+     */
+    private cacheKey(address: string, key: DiscoveredKey): void {
+        // Delete first to refresh insertion order (Map iterates in insertion order)
+        this.keyCache.delete(address);
+        this.keyCache.set(address, key);
+
+        // Evict oldest entries if over capacity
+        if (this.keyCache.size > this.keyCacheMaxSize) {
+            const oldest = this.keyCache.keys().next().value;
+            if (oldest !== undefined) {
+                this.keyCache.delete(oldest);
+            }
+        }
     }
 
     /**
