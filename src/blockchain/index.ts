@@ -11,6 +11,7 @@ export type {
     NoteTransaction,
     SuggestedParams,
     AccountInfo,
+    PaginatedTransactions,
 } from './types';
 
 export {
@@ -27,6 +28,7 @@ export type {
 } from './interfaces';
 
 // Discovery
+export type { DiscoverKeyOptions } from './discovery';
 export {
     parseKeyAnnouncement,
     discoverEncryptionKey,

@@ -137,3 +137,16 @@ export interface AccountInfo {
     /** Minimum balance required. */
     minBalance: bigint;
 }
+
+/**
+ * Paginated transaction search result.
+ *
+ * Wraps the transactions with an optional `nextToken` for cursor-based
+ * pagination. When `nextToken` is present, more results are available.
+ */
+export interface PaginatedTransactions {
+    /** The transactions in this page. */
+    transactions: NoteTransaction[];
+    /** Opaque cursor for fetching the next page. Absent when no more results. */
+    nextToken?: string;
+}
