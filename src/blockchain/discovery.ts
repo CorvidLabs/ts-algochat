@@ -2,12 +2,17 @@
  * AlgoChat Web - Key Discovery
  *
  * Functions for discovering and verifying encryption keys on the blockchain.
+ * Supports paginated search to handle accounts with large transaction histories.
  */
 
 import algosdk from 'algosdk';
 import type { DiscoveredKey } from '../models/types';
 import type { IndexerClient } from './interfaces';
+import type { NoteTransaction } from './types';
 import { verifyEncryptionKey } from '../crypto';
+
+/** Default page size for paginated key discovery. */
+const DEFAULT_DISCOVERY_PAGE_SIZE = 100;
 
 /**
  * Decodes an Algorand address string to extract the 32-byte Ed25519 public key.
@@ -57,24 +62,104 @@ export function parseKeyAnnouncement(
 }
 
 /**
+ * Iterates through an address's transactions page by page.
+ *
+ * Uses `searchTransactionsPaginated` when available on the indexer for
+ * efficient cursor-based pagination. Falls back to a single
+ * `searchTransactions` call otherwise.
+ *
+ * @param indexer The indexer client
+ * @param address The address to search
+ * @param callback Called for each transaction. Return `true` to stop iteration.
+ * @param options Search options
+ */
+async function paginatedSearch(
+    indexer: IndexerClient,
+    address: string,
+    callback: (tx: NoteTransaction) => boolean,
+    options?: { maxDepth?: number; pageSize?: number }
+): Promise<void> {
+    const pageSize = options?.pageSize ?? DEFAULT_DISCOVERY_PAGE_SIZE;
+    const maxDepth = options?.maxDepth;
+
+    // Fast path: indexer supports paginated search
+    if (indexer.searchTransactionsPaginated) {
+        let searched = 0;
+        let nextToken: string | undefined;
+
+        while (true) {
+            const limit = maxDepth
+                ? Math.min(pageSize, maxDepth - searched)
+                : pageSize;
+
+            if (limit <= 0) break;
+
+            const result = await indexer.searchTransactionsPaginated(address, {
+                limit,
+                nextToken,
+            });
+
+            for (const tx of result.transactions) {
+                if (callback(tx)) return;
+            }
+
+            searched += result.transactions.length;
+            nextToken = result.nextToken;
+
+            if (!nextToken || result.transactions.length === 0) break;
+            if (maxDepth && searched >= maxDepth) break;
+        }
+        return;
+    }
+
+    // Fallback: single-batch search
+    const limit = maxDepth ?? 1000;
+    const transactions = await indexer.searchTransactions(address, undefined, limit);
+    for (const tx of transactions) {
+        if (callback(tx)) return;
+    }
+}
+
+/**
+ * Options for key discovery functions.
+ */
+export interface DiscoverKeyOptions {
+    /**
+     * Maximum number of transactions to search.
+     * When omitted, searches exhaustively using pagination.
+     */
+    maxDepth?: number;
+    /**
+     * Number of transactions to fetch per page (default: 100).
+     * Only used when the indexer supports `searchTransactionsPaginated`.
+     */
+    pageSize?: number;
+}
+
+/**
  * Discover the encryption public key for an Algorand address.
  *
- * This searches the indexer for key announcement transactions from the address.
+ * Searches the indexer for key announcement transactions from the address.
  * A key announcement is a self-transfer (sender === receiver) with the X25519
  * public key in the note field.
  *
+ * When the indexer supports paginated search, this iterates through the full
+ * transaction history page by page. Otherwise it falls back to a single batch.
+ *
  * @param indexer The indexer client to use
  * @param address The Algorand address to find the key for
- * @param searchDepth Maximum transactions to search (default: 1000)
+ * @param optionsOrDepth Discovery options, or a numeric search depth for backward compatibility
  * @returns DiscoveredKey if found, undefined otherwise
  */
 export async function discoverEncryptionKey(
     indexer: IndexerClient,
     address: string,
-    searchDepth = 1000
+    optionsOrDepth?: number | DiscoverKeyOptions
 ): Promise<DiscoveredKey | undefined> {
-    // Search for transactions from this address
-    const transactions = await indexer.searchTransactions(address, undefined, searchDepth);
+    const options: DiscoverKeyOptions =
+        typeof optionsOrDepth === 'number'
+            ? { maxDepth: optionsOrDepth }
+            : optionsOrDepth ?? {};
 
     // Decode the Ed25519 public key once before the loop; if the address is
     // malformed we can still search but skip signature verification.
@@ -85,43 +170,48 @@ export async function discoverEncryptionKey(
         // Invalid address format — continue without verification
     }
 
-    // Look for key announcements in the note field
-    for (const tx of transactions) {
-        // Must be sent by this address
-        if (tx.sender !== address) {
-            continue;
-        }
+    let found: DiscoveredKey | undefined;
 
-        // Check if this is a key announcement (self-transfer with note)
-        if (tx.receiver !== address) {
-            continue;
-        }
+    await paginatedSearch(
+        indexer,
+        address,
+        (tx) => {
+            // Must be sent by this address
+            if (tx.sender !== address) return false;
 
-        // Must have a note
-        if (!tx.note || tx.note.length < 32) {
-            continue;
-        }
+            // Check if this is a key announcement (self-transfer with note)
+            if (tx.receiver !== address) return false;
 
-        const key = parseKeyAnnouncement(tx.note, ed25519PublicKey);
-        if (key !== undefined) {
-            return key;
-        }
-    }
+            // Must have a note
+            if (!tx.note || tx.note.length < 32) return false;
 
-    return undefined;
+            const key = parseKeyAnnouncement(tx.note, ed25519PublicKey);
+            if (key !== undefined) {
+                found = key;
+                return true; // stop iteration
+            }
+            return false;
+        },
+        options
+    );
+
+    return found;
 }
 
 /**
  * Discover encryption key from a chat message transaction.
  *
- * This extracts the sender's public key from the envelope header of any
+ * Extracts the sender's public key from the envelope header of any
  * AlgoChat message they've sent.
+ *
+ * When the indexer supports paginated search, this iterates through the full
+ * transaction history page by page. Otherwise it falls back to a single batch.
  *
  * @param indexer The indexer client to use
  * @param address The Algorand address to find the key for
  * @param isChatMessage Function to check if a note is an AlgoChat message
  * @param decodeEnvelope Function to decode envelope and extract public key
- * @param searchDepth Maximum transactions to search (default: 1000)
+ * @param optionsOrDepth Discovery options, or a numeric search depth for backward compatibility
  * @returns DiscoveredKey if found, undefined otherwise
  */
 export async function discoverEncryptionKeyFromMessages(
@@ -129,35 +219,40 @@ export async function discoverEncryptionKeyFromMessages(
     address: string,
     isChatMessage: (note: Uint8Array) => boolean,
     decodeEnvelope: (note: Uint8Array) => { senderPublicKey: Uint8Array },
-    searchDepth = 1000
+    optionsOrDepth?: number | DiscoverKeyOptions
 ): Promise<DiscoveredKey | undefined> {
-    const transactions = await indexer.searchTransactions(address, undefined, searchDepth);
+    const options: DiscoverKeyOptions =
+        typeof optionsOrDepth === 'number'
+            ? { maxDepth: optionsOrDepth }
+            : optionsOrDepth ?? {};
 
-    for (const tx of transactions) {
-        // Only look at transactions SENT by this address
-        if (tx.sender !== address) {
-            continue;
-        }
+    let found: DiscoveredKey | undefined;
 
-        if (!tx.note || tx.note.length === 0) {
-            continue;
-        }
+    await paginatedSearch(
+        indexer,
+        address,
+        (tx) => {
+            // Only look at transactions SENT by this address
+            if (tx.sender !== address) return false;
 
-        if (!isChatMessage(tx.note)) {
-            continue;
-        }
+            if (!tx.note || tx.note.length === 0) return false;
 
-        try {
-            const envelope = decodeEnvelope(tx.note);
-            return {
-                publicKey: envelope.senderPublicKey,
-                isVerified: false, // Not verified via signature
-            };
-        } catch {
-            // Malformed envelope, continue searching
-            continue;
-        }
-    }
+            if (!isChatMessage(tx.note)) return false;
 
-    return undefined;
+            try {
+                const envelope = decodeEnvelope(tx.note);
+                found = {
+                    publicKey: envelope.senderPublicKey,
+                    isVerified: false, // Not verified via signature
+                };
+                return true; // stop iteration
+            } catch {
+                // Malformed envelope, continue searching
+                return false;
+            }
+        },
+        options
+    );
+
+    return found;
 }

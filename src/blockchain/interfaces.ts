@@ -10,6 +10,7 @@ import type {
     NoteTransaction,
     SuggestedParams,
     AccountInfo,
+    PaginatedTransactions,
 } from './types';
 
 /**
@@ -89,4 +90,26 @@ export interface IndexerClient {
      * @param timeoutSecs Maximum seconds to wait (default: 30)
      */
     waitForIndexer(txid: string, timeoutSecs?: number): Promise<NoteTransaction>;
+
+    /**
+     * Search for transactions with cursor-based pagination.
+     *
+     * Returns a page of transactions and an optional `nextToken` for fetching
+     * the next page. Implementations should use the Algorand indexer's native
+     * `next-token` pagination when available.
+     *
+     * This method is optional. When not implemented, discovery functions
+     * fall back to `searchTransactions` with a single batch.
+     *
+     * @param address Address to search for
+     * @param options Pagination options
+     */
+    searchTransactionsPaginated?(
+        address: string,
+        options?: {
+            afterRound?: number;
+            limit?: number;
+            nextToken?: string;
+        }
+    ): Promise<PaginatedTransactions>;
 }

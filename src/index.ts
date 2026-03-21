@@ -136,6 +136,8 @@ export type {
     NoteTransaction,
     SuggestedParams,
     AccountInfo,
+    PaginatedTransactions,
+    DiscoverKeyOptions,
 } from './blockchain';
 
 export {
