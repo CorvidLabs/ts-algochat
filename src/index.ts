@@ -190,4 +190,8 @@ export {
     encryptPSKMessage,
     decryptPSKMessage,
     PSKEncryptionError,
+    PSKContactManager,
+    type PSKContact,
+    type PSKSendResult,
+    type PSKSendOptions,
 } from './psk';

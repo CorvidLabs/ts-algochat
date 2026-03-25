@@ -45,3 +45,11 @@ export {
     decryptPSKMessage,
     PSKEncryptionError,
 } from './encryption';
+
+// Contact Manager
+export {
+    PSKContactManager,
+    type PSKContact,
+    type PSKSendResult,
+    type PSKSendOptions,
+} from './psk-contact-manager';
