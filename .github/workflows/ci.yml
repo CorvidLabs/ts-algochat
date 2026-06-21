@@ -53,7 +53,7 @@ jobs:
       - name: Check if version changed
         id: version
         run: |
-          PUBLISHED=$(npm view ts-algochat version 2>/dev/null || echo "0.0.0")
+          PUBLISHED=$(npm view @corvidlabs/ts-algochat version 2>/dev/null || echo "0.0.0")
           CURRENT=$(node -p "require('./package.json').version")
           if [ "$PUBLISHED" != "$CURRENT" ]; then
             echo "changed=true" >> $GITHUB_OUTPUT
