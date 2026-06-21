@@ -1,0 +1,13 @@
+[tasks]
+build = "bun run tsc"
+test = "bun test"
+clean = "rm -rf dist"
+
+[lanes.check]
+steps = ["build"]
+
+[lanes.ci]
+steps = ["build", "test"]
+
+[lanes.pre-commit]
+steps = ["build", "test"]
