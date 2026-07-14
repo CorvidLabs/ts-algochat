@@ -1,6 +1,6 @@
 ---
 id: CHG-0002-replace-the-incomplete-no-spec-rationale-with-a-stable-full-library-algochat-con
-state: implementing
+state: accepted
 type: documentation
 base_commit: 46b7e8d6fa93dcc33bd30292f89239959eb37090
 ---

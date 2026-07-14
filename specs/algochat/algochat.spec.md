@@ -1,6 +1,6 @@
 ---
 module: algochat
-version: 2
+version: 3
 status: stable
 files:
   - src/index.ts
@@ -67,8 +67,6 @@ depends_on: []
 Provides the TypeScript implementation of the AlgoChat encrypted-messaging protocol on Algorand. The package derives and exchanges encryption keys, encodes standard and pre-shared-key envelopes, submits and indexes note transactions, models conversations, and supplies durable queue, cache, and key-storage abstractions without concealing blockchain metadata.
 
 ## Public API
-
-### Complete export inventory
 
 | Export | Contract |
 |---|---|
@@ -202,35 +200,6 @@ Provides the TypeScript implementation of the AlgoChat encrypted-messaging proto
 | `FileSendQueueStorage` | Queue, cache, or key-storage abstraction with the persistence behavior defined below. |
 | `FileKeyStorage` | Queue, cache, or key-storage abstraction with the persistence behavior defined below. |
 
-
-### Protocol models
-
-`X25519KeyPair`, `ChatEnvelope`, `DecryptedContent`, `ReplyContext`, `MessageDirection`, `Message`, `Conversation`, `SendResult`, `SendReplyContext`, `SendOptions`, `SendOptionsPresets`, `DiscoveredKey`, `PendingMessageStatus`, `PendingMessage`, `EncryptionOptions`, and `PROTOCOL` define the public data contract. The `Conversation` class maintains chronologically ordered messages and conversation metadata. `createPendingMessage`, `markSending`, `markFailed`, `markSent`, and `canRetry` implement immutable pending-message transitions.
-
-### Standard cryptography
-
-`deriveEncryptionKeys`, `generateEphemeralKeyPair`, `x25519ECDH`, and `uint8ArrayEquals` provide X25519 key operations. `encryptMessage`, `encryptReply`, and `decryptMessage` use authenticated encryption and report `EncryptionError`. `encodeEnvelope`, `decodeEnvelope`, and `isChatMessage` implement the binary envelope and report `EnvelopeError`. `signEncryptionKey`, `verifyEncryptionKey`, `getPublicKey`, and `fingerprint` implement Ed25519 key announcements and enforce `ED25519_SIGNATURE_SIZE`, `ED25519_PUBLIC_KEY_SIZE`, and `X25519_PUBLIC_KEY_SIZE` through `SignatureError`.
-
-### PSK protocol
-
-`PSK_PROTOCOL`, `PSKEnvelope`, and `PSKState` describe protocol version 1.1. `encryptPSKMessage` and `decryptPSKMessage` provide hybrid ECDH/PSK encryption and report `PSKEncryptionError`. `encodePSKEnvelope`, `decodePSKEnvelope`, and `isPSKMessage` implement its wire format and report `PSKEnvelopeError`. `deriveSessionPSK`, `derivePositionPSK`, `derivePSKAtCounter`, `deriveHybridSymmetricKey`, and `deriveSenderKey` implement deterministic ratcheting. `createPSKState`, `validateCounter`, `recordReceive`, and `advanceSendCounter` manage replay-safe counters. `createPSKExchangeURI` and `parsePSKExchangeURI` provide out-of-band exchange.
-
-### Blockchain boundary
-
-`AlgodClient` and `IndexerClient` define injectable network clients. `AlgorandConfig`, `localnet`, `testnet`, `mainnet`, and `withIndexer` configure endpoints; `TransactionInfo`, `NoteTransaction`, `SuggestedParams`, `AccountInfo`, and `PaginatedTransactions` model responses. `parseKeyAnnouncement`, `discoverEncryptionKey`, `discoverEncryptionKeyFromMessages`, and `DiscoverKeyOptions` resolve authenticated key announcements. `MessageTransaction`, `UnsignedTransaction`, `SignedTransaction`, and `ChatAccountLike` create and sign minimum-payment note transactions while enforcing `MAX_NOTE_SIZE` and `MINIMUM_PAYMENT` with `MessageTooLargeError`. The blockchain `MessageIndexer`, `DEFAULT_PAGE_SIZE`, `DEFAULT_SEARCH_DEPTH`, and `PublicKeyNotFoundError` page and decrypt indexed messages.
-
-### Services and account management
-
-`AlgorandService`, its `AlgorandConfig`, and `ChatAccount` compose account, encryption, transaction, discovery, and indexer operations. `createChatAccountFromMnemonic`, `createRandomChatAccount`, `validateMnemonic`, `validateAddress`, `publicKeyToBase64`, and `base64ToPublicKey` manage portable account material. The service-layer `MessageIndexer`, `MessageIndexerConfig`, `PaginationOptions`, and `WaitForTransactionOptions` provide paginated history, conversation assembly, and confirmation polling.
-
-### Queue, cache, and storage
-
-`SendQueue`, `SendQueueStorage`, `InMemorySendQueueStorage`, `FileSendQueueStorage`, `EnqueueOptions`, and `QueueEventCallback` provide retrying ordered delivery. `SyncManager`, `SyncState`, `SyncEvents`, and `SyncManagerConfig` coordinate connectivity and background synchronization. Both cache surfaces expose `MessageCache`, `InMemoryMessageCache`, and `PublicKeyCache` for bounded message and key lookup. `EncryptionKeyStorage`, `InMemoryKeyStorage`, and `FileKeyStorage` provide key persistence and use `KeyNotFoundError`, `PasswordRequiredError`, `DecryptionFailedError`, and `InvalidKeyDataError` for distinct failures.
-
-### Errors
-
-`ChatErrorCode`, `ChatError`, `isChatError`, and `wrapError` provide stable typed error classification and contextual wrapping across public operations.
-
 ## Invariants
 
 1. Standard messages use a fresh ephemeral X25519 key and ChaCha20-Poly1305 authenticated encryption; decryption supports both recipient and sender key paths.
@@ -288,3 +257,4 @@ Then SendQueue processes eligible entries in order, records failures for retry, 
 |---|---|---|
 | 1 | 2026-07-13 | Adopted SpecSync 5 and Trust 1 governance without a canonical product specification |
 | 2 | 2026-07-14 | Added the stable full-library contract for the existing implementation and tests |
+| 3 | 2026-07-14 | CHG-0002-replace-the-incomplete-no-spec-rationale-with-a-stable-full-library-algochat-con: Replace the incomplete no-spec rationale with a stable full-library AlgoChat contract covering every existing source, export, invariant, failure mode, and native test boundary |
