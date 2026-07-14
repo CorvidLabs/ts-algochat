@@ -1,0 +1,33 @@
+{
+  "approvals": [
+    {
+      "gate": "definition",
+      "actor": "user:0xLeif",
+      "timestamp": 1784012057,
+      "digest": "cb446c43dce87aeccaa09be014852a87bbe67378a97423240312a77f4dd24f0b",
+      "note": "Definition reviewed: the contract documents existing TypeScript AlgoChat behavior and requires truthful 100% export, file, and line coverage without product changes."
+    },
+    {
+      "gate": "definition",
+      "actor": "user:0xLeif",
+      "timestamp": 1784012169,
+      "digest": "771a38ddfcc890c4a68e38800cf37675d22a393431bf7b1ad22599352e5f6311",
+      "note": "Reapproved after adding the exact 129-export inventory and correcting the semantic delta operation; behavior remains documentation-only."
+    },
+    {
+      "gate": "definition",
+      "actor": "user:0xLeif",
+      "timestamp": 1784012200,
+      "digest": "cb7d56367dcad6fe561f9867032f9ae44f72bbc679f940e4ef1ab14593476e77",
+      "note": "Reapproved after replacing circular verification tasks with truthful completed verification configuration; no hosted or closing success is claimed."
+    },
+    {
+      "gate": "definition",
+      "actor": "user:0xLeif",
+      "timestamp": 1784012394,
+      "digest": "e9a3180d4df92d564ce0279b8f0b26035d448ce132ca56d14b0042de61433678",
+      "note": "Reapproved after representing the already-staged canonical requirement content as modified rather than duplicating it; exact contract is unchanged."
+    }
+  ],
+  "reopenings": []
+}
