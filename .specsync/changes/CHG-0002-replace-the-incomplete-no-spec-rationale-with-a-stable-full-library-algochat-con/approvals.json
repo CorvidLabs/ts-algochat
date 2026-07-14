@@ -41,6 +41,13 @@
       "timestamp": 1784012469,
       "digest": "25196c1e9e3594b1676e7e9d11c2a0402a93863fe5fc7e5672a2ce53a4baa0b1",
       "note": "Closing approval after strict native build and 454/454 Bun tests passed with explicit evidence for all 20 requirements and no product changes."
+    },
+    {
+      "gate": "acceptance",
+      "actor": "user:0xLeif",
+      "timestamp": 1784012625,
+      "digest": "ad40d3d9c51952b714431f0cecdaa4af2412761c4ffca46279d7cc6c93c9720b",
+      "note": "Fresh closing approval after restoring detailed API explanations and rerunning the strict TypeScript build plus 454/454 Bun tests; semantics and product bytes remain unchanged."
     }
   ],
   "reopenings": [
