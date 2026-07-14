@@ -5,10 +5,10 @@
   "title": "Replace the incomplete no-spec rationale with a stable full-library AlgoChat contract covering every existing source, export, invariant, failure mode, and native test boundary",
   "description": "Replace the incomplete no-spec rationale with a stable full-library AlgoChat contract covering every existing source, export, invariant, failure mode, and native test boundary",
   "kind": "documentation",
-  "state": "verifying",
+  "state": "implementing",
   "base_commit": "46b7e8d6fa93dcc33bd30292f89239959eb37090",
   "created_at": 1784011920,
-  "updated_at": 1784012396,
+  "updated_at": 1784012456,
   "affected_specs": [
     "algochat"
   ],
