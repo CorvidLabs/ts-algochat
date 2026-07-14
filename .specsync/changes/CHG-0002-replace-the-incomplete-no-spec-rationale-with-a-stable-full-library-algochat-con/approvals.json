@@ -43,5 +43,61 @@
       "note": "Closing approval after strict native build and 454/454 Bun tests passed with explicit evidence for all 20 requirements and no product changes."
     }
   ],
-  "reopenings": []
+  "reopenings": [
+    {
+      "schema_version": 1,
+      "change_id": "CHG-0002-replace-the-incomplete-no-spec-rationale-with-a-stable-full-library-algochat-con",
+      "actor": "user:0xLeif",
+      "reason": "Restore the detailed grouped public-API explanations removed mechanically when the accepted semantic delta replaced the section table; this is a non-semantic documentation correction.",
+      "timestamp": 1784012605,
+      "from_state": "accepted",
+      "to_state": "verifying",
+      "superseded_approval": {
+        "gate": "acceptance",
+        "actor": "user:0xLeif",
+        "timestamp": 1784012469,
+        "digest": "25196c1e9e3594b1676e7e9d11c2a0402a93863fe5fc7e5672a2ce53a4baa0b1",
+        "note": "Closing approval after strict native build and 454/454 Bun tests passed with explicit evidence for all 20 requirements and no product changes."
+      },
+      "prior_verification": {
+        "timestamp": 1784012463,
+        "commit": "ed12850c6f073c8476b8dbcee2b6d1dd1075d9cb",
+        "contract_digest": "cc5e7d165efceb2ff58992f9107da26faa45903b904bc2395ebb6976a7275199",
+        "workspace_digest": "05960add6c7cd9ef02349eff1688ea29cd2a040e3c31102ba452ec0c226226c6",
+        "acceptance_input_digest": "b5a3bcfdd6f281ce92acf6f6be954fd6b4feb1f4df94d150a5a8e7d65fc906c8",
+        "passed": true,
+        "commands": [
+          {
+            "command": "fledge lanes run verify",
+            "success": true,
+            "exit_code": 0
+          }
+        ],
+        "requirement_ids": [
+          "REQ-algochat-001",
+          "REQ-algochat-002",
+          "REQ-algochat-003",
+          "REQ-algochat-004",
+          "REQ-algochat-005",
+          "REQ-algochat-006",
+          "REQ-algochat-007",
+          "REQ-algochat-008",
+          "REQ-algochat-009",
+          "REQ-algochat-010",
+          "REQ-algochat-011",
+          "REQ-algochat-012",
+          "REQ-algochat-013",
+          "REQ-algochat-014",
+          "REQ-algochat-015",
+          "REQ-algochat-016",
+          "REQ-algochat-017",
+          "REQ-algochat-018",
+          "REQ-algochat-019",
+          "REQ-algochat-020"
+        ]
+      },
+      "stale_acceptance_input_digest": "b5a3bcfdd6f281ce92acf6f6be954fd6b4feb1f4df94d150a5a8e7d65fc906c8",
+      "current_acceptance_input_digest": "49f11106506e999df6475246072b77b6ecb6d7d150115f49c9c0453334db1a13"
+    }
+  ]
 }

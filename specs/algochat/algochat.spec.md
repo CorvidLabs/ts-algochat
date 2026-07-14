@@ -200,6 +200,44 @@ Provides the TypeScript implementation of the AlgoChat encrypted-messaging proto
 | `FileSendQueueStorage` | Queue, cache, or key-storage abstraction with the persistence behavior defined below. |
 | `FileKeyStorage` | Queue, cache, or key-storage abstraction with the persistence behavior defined below. |
 
+### Protocol models and standard cryptography
+
+The model exports define keys, envelopes, decrypted content, replies, messages,
+conversations, send results and options, discovered keys, pending delivery, and
+protocol constants. `Conversation` owns chronological message operations.
+Key helpers derive deterministic account keys or fresh ephemeral keys.
+`encryptMessage`, `encryptReply`, and `decryptMessage` provide
+bidirectional authenticated encryption; envelope helpers enforce the binary
+format. Signature helpers bind an Ed25519 identity to an X25519 announcement.
+
+### PSK protocol
+
+The PSK surface implements AlgoChat 1.1 hybrid ECDH/PSK encryption. Session and
+position derivation create the two-level 100-message ratchet. State helpers
+advance send counters and maintain the receive replay window. PSK envelope
+helpers enforce its counter-bearing binary format, while the exchange helpers
+round-trip the out-of-band `algochat://` URI.
+
+### Blockchain and service boundary
+
+`AlgodClient` and `IndexerClient` are injectable network boundaries.
+Network constructors provide localnet, testnet, mainnet, and optional indexer
+configuration. Discovery verifies key announcements; transaction helpers build
+and sign minimum-payment note transfers under the 1,024-byte limit. The two
+`MessageIndexer` surfaces provide low-level key search and high-level
+paginated message/conversation retrieval. `AlgorandService` composes these
+operations with account creation, send, reply, fetch, and confirmation flows.
+
+### Queue, cache, storage, and errors
+
+`SendQueue` and `SyncManager` coordinate persisted offline delivery,
+bounded retry, connectivity, and synchronization. In-memory and file-backed
+cache/storage exports provide message, public-key, encryption-key, and queue
+persistence. Typed storage failures distinguish absent passwords, missing
+keys, authentication failures, and invalid data. `ChatErrorCode`,
+`ChatError`, `isChatError`, and `wrapError` preserve stable error
+classification and contextual causes across the package.
+
 ## Invariants
 
 1. Standard messages use a fresh ephemeral X25519 key and ChaCha20-Poly1305 authenticated encryption; decryption supports both recipient and sender key paths.
