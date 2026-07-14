@@ -11,3 +11,7 @@ steps = ["build", "test"]
 
 [lanes.pre-commit]
 steps = ["build", "test"]
+
+[lanes.verify]
+description = "Build and test the TypeScript AlgoChat package"
+steps = ["build", "test"]
