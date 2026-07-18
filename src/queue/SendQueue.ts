@@ -4,8 +4,8 @@
  * Manages offline message queuing and retry logic.
  */
 
-import type { PendingMessage, PendingMessageStatus, SendReplyContext } from '../models/types';
-import { ChatError } from '../errors/ChatError';
+import type { PendingMessage, PendingMessageStatus, SendReplyContext } from '../models/types.js';
+import { ChatError } from '../errors/ChatError.js';
 
 /**
  * Storage interface for pending messages

@@ -7,8 +7,8 @@
 import { mkdir, readFile, writeFile, unlink, chmod, stat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
-import type { PendingMessage, PendingMessageStatus, SendReplyContext } from '../models/types';
-import type { SendQueueStorage } from './SendQueue';
+import type { PendingMessage, PendingMessageStatus, SendReplyContext } from '../models/types.js';
+import type { SendQueueStorage } from './SendQueue.js';
 
 /** Default directory name for AlgoChat data */
 const DEFAULT_DIRECTORY = '.algochat';
