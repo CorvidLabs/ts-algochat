@@ -3,12 +3,12 @@
  */
 
 import { describe, test, expect } from 'bun:test';
-import { MessageIndexer, PublicKeyNotFoundError } from './message-indexer';
-import { encodeEnvelope } from '../crypto/envelope';
-import { PROTOCOL } from '../models/types';
-import type { IndexerClient } from './interfaces';
-import type { NoteTransaction, PaginatedTransactions } from './types';
-import type { ChatEnvelope, X25519KeyPair } from '../models/types';
+import { MessageIndexer, PublicKeyNotFoundError } from './message-indexer.js';
+import { encodeEnvelope } from '../crypto/envelope.js';
+import { PROTOCOL } from '../models/types.js';
+import type { IndexerClient } from './interfaces.js';
+import type { NoteTransaction, PaginatedTransactions } from './types.js';
+import type { ChatEnvelope, X25519KeyPair } from '../models/types.js';
 
 /** Build a minimal valid envelope note (passes isChatMessage + decodeEnvelope) */
 function makeChatNote(senderPublicKey: Uint8Array): Uint8Array {

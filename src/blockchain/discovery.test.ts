@@ -4,11 +4,11 @@
 
 import { describe, test, expect } from 'bun:test';
 import algosdk from 'algosdk';
-import { parseKeyAnnouncement, discoverEncryptionKey, discoverEncryptionKeyFromMessages } from './discovery';
-import { signEncryptionKey, getPublicKey } from '../crypto';
-import { deriveEncryptionKeys } from '../crypto/keys';
-import type { IndexerClient } from './interfaces';
-import type { NoteTransaction, PaginatedTransactions } from './types';
+import { parseKeyAnnouncement, discoverEncryptionKey, discoverEncryptionKeyFromMessages } from './discovery.js';
+import { signEncryptionKey, getPublicKey } from '../crypto/index.js';
+import { deriveEncryptionKeys } from '../crypto/keys.js';
+import type { IndexerClient } from './interfaces.js';
+import type { NoteTransaction, PaginatedTransactions } from './types.js';
 
 /** Generate a test account and return its seed, ed25519 public key, and address. */
 function makeTestAccount() {
