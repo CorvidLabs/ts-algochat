@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import { PublicKeyCache } from './PublicKeyCache';
-import type { DiscoveredKey } from '../models/types';
+import { PublicKeyCache } from './PublicKeyCache.js';
+import type { DiscoveredKey } from '../models/types.js';
 
 function makeKey(address: string, fill = 0x01): DiscoveredKey {
     return {

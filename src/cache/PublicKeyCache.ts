@@ -4,7 +4,7 @@
  * TTL-based cache for discovered encryption public keys.
  */
 
-import type { DiscoveredKey } from '../models/types';
+import type { DiscoveredKey } from '../models/types.js';
 
 /** Cached key entry with timestamp */
 interface CachedEntry {
