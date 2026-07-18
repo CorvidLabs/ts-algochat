@@ -11,7 +11,7 @@ import type {
     SuggestedParams,
     AccountInfo,
     PaginatedTransactions,
-} from './types';
+} from './types.js';
 
 /**
  * Interface for interacting with an Algorand node (algod).

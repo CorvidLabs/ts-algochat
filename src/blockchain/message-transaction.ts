@@ -4,14 +4,14 @@
  * Helper for building and signing message transactions on Algorand.
  */
 
-import type { ChatEnvelope } from '../models/types';
+import type { ChatEnvelope } from '../models/types.js';
 
 /** Chat account interface (minimal) */
 export interface ChatAccountLike {
     address: string;
 }
-import type { SuggestedParams } from './types';
-import { encodeEnvelope } from '../crypto/envelope';
+import type { SuggestedParams } from './types.js';
+import { encodeEnvelope } from '../crypto/envelope.js';
 
 /** Maximum size for transaction note field in bytes */
 export const MAX_NOTE_SIZE = 1024;
