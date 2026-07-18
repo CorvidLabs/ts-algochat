@@ -2,7 +2,7 @@
  * AlgoChat Web - Envelope Encoding/Decoding
  */
 
-import { ChatEnvelope, PROTOCOL } from '../models/types';
+import { ChatEnvelope, PROTOCOL } from '../models/types.js';
 
 export class EnvelopeError extends Error {
     constructor(message: string) {

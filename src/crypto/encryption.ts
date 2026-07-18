@@ -9,8 +9,8 @@ import { chacha20poly1305 } from '@noble/ciphers/chacha';
 import { hkdf } from '@noble/hashes/hkdf';
 import { sha256 } from '@noble/hashes/sha256';
 import { randomBytes } from '@noble/ciphers/webcrypto';
-import { ChatEnvelope, DecryptedContent, PROTOCOL, type EncryptionOptions } from '../models/types';
-import { generateEphemeralKeyPair, x25519ECDH, uint8ArrayEquals } from './keys';
+import { ChatEnvelope, DecryptedContent, PROTOCOL, type EncryptionOptions } from '../models/types.js';
+import { generateEphemeralKeyPair, x25519ECDH, uint8ArrayEquals } from './keys.js';
 
 const ENCRYPTION_INFO_PREFIX = new TextEncoder().encode('AlgoChatV1');
 const SENDER_KEY_INFO_PREFIX = new TextEncoder().encode('AlgoChatV1-SenderKey');
@@ -183,7 +183,7 @@ function decryptAsSender(
     const ikm = deriveIKM(sharedSecret, options?.psk);
 
     const senderInfo = concatBytes(SENDER_KEY_INFO_PREFIX, senderPublicKey);
-    const senderDecryptionKey = hkdf(sha256, ikm, envelope.ephemeralPublicKey, senderInfo, 32);
+    const senderDecryptionKey = hkdf(sha256, senderIkm, envelope.ephemeralPublicKey, senderInfo, 32);
 
     // Step 2: Decrypt the symmetric key
     const senderCipher = chacha20poly1305(senderDecryptionKey, envelope.nonce);

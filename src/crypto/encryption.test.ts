@@ -3,9 +3,9 @@
  */
 
 import { describe, test, expect } from 'bun:test';
-import { deriveEncryptionKeys, generateEphemeralKeyPair, uint8ArrayEquals } from './keys';
-import { encryptMessage, decryptMessage } from './encryption';
-import { encodeEnvelope, decodeEnvelope, isChatMessage } from './envelope';
+import { deriveEncryptionKeys, generateEphemeralKeyPair, uint8ArrayEquals } from './keys.js';
+import { encryptMessage, decryptMessage } from './encryption.js';
+import { encodeEnvelope, decodeEnvelope, isChatMessage } from './envelope.js';
 
 describe('Key Derivation', () => {
     test('derives consistent keys from same seed', () => {
