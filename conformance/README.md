@@ -55,6 +55,18 @@ bun conformance/tools/verify.mjs
 (The repo is bun-first; the tools are plain ESM with no dependencies beyond
 the package source itself and `algosdk`.)
 
+### Regeneration semantics (verified empirically)
+
+- Files `00`, `01`, `03`, `05` are **fully deterministic**: they must
+  regenerate byte-identically forever.
+- Files `02`, `04`, `06` contain captured envelopes made with fresh
+  ephemeral keys and nonces, so their `capturedEnvelope` sections (and the
+  negative-case inputs derived from them) **rotate on every regeneration by
+  design**. Their `encodingVector` sections are deterministic and must not
+  change.
+- A byte change in **any deterministic section** is a protocol change, not
+  a test update — review it like one.
+
 ## Verifying an independent implementation
 
 The JSON files are the contract; the verifier is just one consumer of it. A
@@ -95,6 +107,25 @@ with a note, and collected here because they are easy to get wrong:
    Node.js ESM rejects. Consumers on plain Node need a bundling step until
    the build emits explicit `.js` extensions.
 
+## Relationship to the existing `bun test` suite
+
+The unit tests and these vectors test **different properties**, and the gap
+runs in both directions:
+
+- `bun test` proves **self-consistency with fresh randomness**: round-trips,
+  key uniqueness per message, wrong-key rejection, PSK option behavior. It
+  pins **no fixed bytes** — if the HKDF salt or wire layout changed tomorrow,
+  the unit tests would stay green (everything still round-trips) while every
+  previously sent message becomes undecryptable. That is the exact
+  regression class these vectors exist to catch.
+- Conversely, the vectors do **not** cover everything the unit tests do:
+  key-publish payloads decrypting to `null`, empty-PSK equivalence with
+  no-PSK, invalid-PSK-length errors, ephemeral uniqueness, and the
+  blockchain/queue/cache layers are unit-test territory (I/O and behavior,
+  not byte determinism).
+
+They are complements. Run both.
+
 ## Coverage and non-goals
 
 Covered: key derivation, ECDH, both envelope wire formats, the PSK ratchet
@@ -111,8 +142,8 @@ claims**; nothing in this suite should be read as one.
 - **Vectors are append-only.** Changing existing bytes invalidates every
   independent implementation that passed them. If the protocol changes, bump
   the protocol version and add a new vector set.
-- **Regeneration requires review.** If `generate.mjs` legitimately produces
-  different bytes for the same inputs, that is a protocol change, not a test
-  update — treat it like one.
+- **Regeneration requires review of the deterministic sections** (see
+  semantics above). Rotating captured bytes alone is not a protocol change;
+  a changed deterministic byte is.
 - **Never commit real key material.** Fixed, public, sequential test inputs
   only. If a vector ever needs entropy, freeze the captured value.
