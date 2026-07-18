@@ -7,7 +7,7 @@
 import { hkdf } from '@noble/hashes/hkdf';
 import { sha256 } from '@noble/hashes/sha256';
 import { x25519 } from '@noble/curves/ed25519';
-import type { X25519KeyPair } from '../models/types';
+import type { X25519KeyPair } from '../models/types.js';
 
 const KEY_DERIVATION_SALT = new TextEncoder().encode('AlgoChat-v1-encryption');
 const KEY_DERIVATION_INFO = new TextEncoder().encode('x25519-key');
