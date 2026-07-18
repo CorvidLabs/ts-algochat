@@ -67,6 +67,15 @@ the package source itself and `algosdk`.)
 - A byte change in **any deterministic section** is a protocol change, not
   a test update — review it like one.
 
+## Continuous integration
+
+A ready-to-install workflow ships at `conformance/ci/conformance.yml` —
+copy it to `.github/workflows/conformance.yml` to enable. On every push and
+pull request it runs `bun test`, the 79-check verifier, and a regeneration
+tripwire that fails the build if any deterministic vector file stops
+regenerating byte-identically — a protocol-change alarm, not just a test
+failure.
+
 ## Verifying an independent implementation
 
 The JSON files are the contract; the verifier is just one consumer of it. A
