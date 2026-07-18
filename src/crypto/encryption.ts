@@ -183,7 +183,7 @@ function decryptAsSender(
     const ikm = deriveIKM(sharedSecret, options?.psk);
 
     const senderInfo = concatBytes(SENDER_KEY_INFO_PREFIX, senderPublicKey);
-    const senderDecryptionKey = hkdf(sha256, senderIkm, envelope.ephemeralPublicKey, senderInfo, 32);
+    const senderDecryptionKey = hkdf(sha256, ikm, envelope.ephemeralPublicKey, senderInfo, 32);
 
     // Step 2: Decrypt the symmetric key
     const senderCipher = chacha20poly1305(senderDecryptionKey, envelope.nonce);
