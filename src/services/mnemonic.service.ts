@@ -5,8 +5,8 @@
  */
 
 import algosdk from 'algosdk';
-import { deriveEncryptionKeys, getPublicKey } from '../crypto';
-import type { ChatAccount } from './algorand.service';
+import { deriveEncryptionKeys, getPublicKey } from '../crypto/index.js';
+import type { ChatAccount } from './algorand.service.js';
 
 /**
  * Creates a ChatAccount from an Algorand mnemonic
