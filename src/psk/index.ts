@@ -6,7 +6,7 @@
  */
 
 // Types and constants
-export { PSK_PROTOCOL, type PSKEnvelope, type PSKState } from './types';
+export { PSK_PROTOCOL, type PSKEnvelope, type PSKState } from './types.js';
 
 // Ratchet key derivation
 export {
@@ -15,7 +15,7 @@ export {
     derivePSKAtCounter,
     deriveHybridSymmetricKey,
     deriveSenderKey,
-} from './ratchet';
+} from './ratchet.js';
 
 // Envelope encoding/decoding
 export {
@@ -23,7 +23,7 @@ export {
     decodePSKEnvelope,
     isPSKMessage,
     PSKEnvelopeError,
-} from './envelope';
+} from './envelope.js';
 
 // Counter state management
 export {
@@ -31,17 +31,17 @@ export {
     validateCounter,
     recordReceive,
     advanceSendCounter,
-} from './state';
+} from './state.js';
 
 // Exchange URI
 export {
     createPSKExchangeURI,
     parsePSKExchangeURI,
-} from './exchange';
+} from './exchange.js';
 
 // Encryption/Decryption
 export {
     encryptPSKMessage,
     decryptPSKMessage,
     PSKEncryptionError,
-} from './encryption';
+} from './encryption.js';

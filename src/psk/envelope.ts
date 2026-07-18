@@ -12,7 +12,7 @@
  *   [130..]:  ciphertext + 16-byte tag
  */
 
-import { PSK_PROTOCOL, type PSKEnvelope } from './types';
+import { PSK_PROTOCOL, type PSKEnvelope } from './types.js';
 
 export class PSKEnvelopeError extends Error {
     constructor(message: string) {
