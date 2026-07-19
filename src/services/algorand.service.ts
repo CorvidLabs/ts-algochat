@@ -206,6 +206,7 @@ export class AlgorandService {
             replyToTxid,
             replyToPreview,
             chatAccount.encryptionKeys.publicKey,
+            recipientPublicKey,
             this.encryptionOptions
         );
 
