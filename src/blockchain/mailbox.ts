@@ -156,6 +156,24 @@ export function mailboxMethodSelector(signature: string): Uint8Array {
 }
 
 /**
+ * ARC-4-encodes a dynamic `byte[]` application argument as
+ * `uint16_be(length) ‖ bytes`. Required for raven router `mailboxPut`
+ * envelopes (static `byte[32]` args are passed raw).
+ *
+ * @param bytes - Raw payload bytes (length must fit in a uint16)
+ * @returns Length-prefixed ARC-4 dynamic bytes
+ */
+export function arc4EncodeDynamicBytes(bytes: Uint8Array): Uint8Array {
+    if (bytes.length > 0xffff) {
+        throw new MailboxEnvelopeError(bytes.length);
+    }
+    const encoded = new Uint8Array(2 + bytes.length);
+    new DataView(encoded.buffer).setUint16(0, bytes.length, false);
+    encoded.set(bytes, 2);
+    return encoded;
+}
+
+/**
  * Derives the per-message msg key from a shared view secret and counter.
  *
  * `msg_key = HMAC-SHA256(key = view_secret, "raven/mailbox/v1" ‖ counter_be32)`

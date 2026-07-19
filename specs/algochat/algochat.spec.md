@@ -214,6 +214,7 @@ Provides the TypeScript implementation of the AlgoChat encrypted-messaging proto
 | `planMailboxPut` | Pure mailbox put planning operation defined below. |
 | `planMailboxFanout` | Pure mailbox atomic fan-out planning operation defined below. |
 | `mailboxMethodSelector` | ARC-4 method selector derivation defined below. |
+| `arc4EncodeDynamicBytes` | ARC-4-encodes a dynamic `byte[]` app arg as `uint16_be(len) ‖ bytes` for router puts. |
 | `MAILBOX_METHODS` | Published protocol value, size boundary, preset, or search default. |
 | `MAILBOX_MSG_KEY_DOMAIN` | Published protocol value, size boundary, preset, or search default. |
 | `MAILBOX_ID_DOMAIN` | Published protocol value, size boundary, preset, or search default. |
@@ -295,3 +296,4 @@ Then SendQueue processes eligible entries in order, records failures for retry, 
 | 2 | 2026-07-14 | Added the stable full-library contract for the existing implementation and tests |
 | 3 | 2026-07-14 | CHG-0002-replace-the-incomplete-no-spec-rationale-with-a-stable-full-library-algochat-con: Replace the incomplete no-spec rationale with a stable full-library AlgoChat contract covering every existing source, export, invariant, failure mode, and native test boundary |
 | 2026-07-19 | CHG-0006-add-an-opt-in-mailboxroutertransport-speaking-the-raven-mailbox-protocol-per-co: Add an opt-in MailboxRouterTransport speaking the raven mailbox protocol: per-counter key derivation, MBR-exact put groups, atomic N-recipient fan-out, burn/reclaim/status, off-chain box reads, gated behind service config |
+| 2026-07-19 | Fix MailboxRouterTransport for real algod: ARC-4-encode put envelopes; include depositor in burn/reclaim foreign accounts for inner refunds |
