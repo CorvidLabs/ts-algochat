@@ -5,11 +5,10 @@
   "title": "Adopt SpecSync 5.0.1 and Trust 1.0.0 governance for TypeScript AlgoChat",
   "description": "Adopt SpecSync 5.0.1 and Trust 1.0.0 governance for TypeScript AlgoChat",
   "kind": "migration",
-  "state": "accepted",
-  "canonical_applied": true,
+  "state": "archived",
   "base_commit": "01dd5deae8288f8fbeca0ff7f8c67b2c66d8f3a0",
   "created_at": 1783886621,
-  "updated_at": 1784012513,
+  "updated_at": 1784425563,
   "affected_specs": [],
   "affected_paths": [
     ".github/",
