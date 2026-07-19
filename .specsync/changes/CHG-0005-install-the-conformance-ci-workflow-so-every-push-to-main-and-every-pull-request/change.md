@@ -1,6 +1,6 @@
 ---
 id: CHG-0005-install-the-conformance-ci-workflow-so-every-push-to-main-and-every-pull-request
-state: implementing
+state: accepted
 type: feature
 base_commit: af196bb37f92bbcb42b93b9e909b63270111929e
 ---
