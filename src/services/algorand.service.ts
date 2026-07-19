@@ -8,6 +8,7 @@ import algosdk from 'algosdk';
 import type { Message, Conversation, SendResult, SendOptions, X25519KeyPair, DiscoveredKey, EncryptionOptions } from '../models/types.js';
 import { encryptMessage, encryptReply, decryptMessage, encodeEnvelope, decodeEnvelope, isChatMessage } from '../crypto/index.js';
 import { ChatError } from '../errors/ChatError.js';
+import { MailboxRouterTransport } from './mailbox-router.service.js';
 
 export interface AlgorandConfig {
     algodToken: string;
@@ -16,6 +17,12 @@ export interface AlgorandConfig {
     indexerToken: string;
     indexerServer: string;
     indexerPort?: number;
+    /**
+     * Opt-in raven mailbox router app id. When set, the service exposes a
+     * `mailbox` transport for dead-drop delivery; when absent, no mailbox
+     * functionality is available. Pre-audit: do not point at MainNet.
+     */
+    mailboxAppId?: number | bigint;
 }
 
 export interface ChatAccount {
@@ -62,6 +69,12 @@ export class AlgorandService {
     private keyCache: Map<string, DiscoveredKey> = new Map();
     private keyCacheMaxSize: number;
 
+    /**
+     * Opt-in raven mailbox transport. Present only when the service was
+     * constructed with `mailboxAppId`; otherwise undefined.
+     */
+    readonly mailbox?: MailboxRouterTransport;
+
     constructor(config: AlgorandConfig, encryptionOptions?: EncryptionOptions, keyCacheMaxSize = DEFAULT_KEY_CACHE_SIZE) {
         // Pass empty string for port when not specified to avoid algosdk defaulting to 8080
         this.algodClient = new algosdk.Algodv2(
@@ -78,6 +91,13 @@ export class AlgorandService {
 
         this.encryptionOptions = encryptionOptions;
         this.keyCacheMaxSize = keyCacheMaxSize;
+
+        if (config.mailboxAppId !== undefined) {
+            this.mailbox = new MailboxRouterTransport({
+                algodClient: this.algodClient,
+                appId: config.mailboxAppId,
+            });
+        }
     }
 
     /**
