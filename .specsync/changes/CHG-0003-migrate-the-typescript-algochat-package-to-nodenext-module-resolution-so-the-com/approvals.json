@@ -1,0 +1,11 @@
+{
+  "approvals": [
+    {
+      "gate": "definition",
+      "actor": "user:0xLeif",
+      "timestamp": 1784428610,
+      "digest": "d8002161cbef1c4f477662839b4cc4b759a227e4afc190ed20fdfd1b388f02b0",
+      "note": "Definition reviewed and authorized by the repository owner: packaging-only NodeNext migration, no spec change, mechanical import rewrites with explicit verification criteria"
+    }
+  ]
+}
