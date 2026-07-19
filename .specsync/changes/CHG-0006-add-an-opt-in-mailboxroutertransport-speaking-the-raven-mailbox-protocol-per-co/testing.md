@@ -42,3 +42,13 @@ wallets, or public-network mutation).
 
 Full Bun suite (454 pre-existing tests + new tests) and `tsc` type-check
 must pass in the fledge verify lane.
+
+## Requirement evidence map
+
+- `REQ-algochat-021`: derivation known-answer, determinism, rotation, and
+  rejection cases in `src/blockchain/mailbox.test.ts`.
+- `REQ-algochat-022`: MBR table, exact-funding, and fan-out limit cases in
+  `src/blockchain/mailbox.test.ts`, plus decoded group amounts in
+  `src/services/mailbox-router.service.test.ts`.
+- `REQ-algochat-023`: stub-algod send, fan-out, burn, reclaim, read, and
+  opt-in cases in `src/services/mailbox-router.service.test.ts`.
