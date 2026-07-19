@@ -1,6 +1,6 @@
 ---
 id: CHG-0003-migrate-the-typescript-algochat-package-to-nodenext-module-resolution-so-the-com
-state: verifying
+state: accepted
 type: migration
 base_commit: e628bb5d8813c3d6c78ff2b594aae6ff82e55a5a
 ---
