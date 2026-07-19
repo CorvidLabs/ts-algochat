@@ -1,0 +1,53 @@
+{
+  "tool": "@corvidlabs/ts-algochat conformance generator",
+  "libraryVersion": "0.4.1",
+  "generatedBy": "reference implementation (TypeScript)",
+  "note": "All byte strings are lowercase hex. All inputs are fixed test values; none are secret.",
+  "file": "02-standard-envelope",
+  "description": "Standard 0x01 envelope (version 1, protocol 1): deterministic binary encoding of a fully specified envelope, plus a captured real envelope (random ephemeral key + nonce, frozen here) with recipient-path and sender-path decryptions.",
+  "wireFormat": {
+    "headerSize": 126,
+    "layout": "version(1) | protocolId(1) | senderPublicKey(32) | ephemeralPublicKey(32) | nonce(12) | encryptedSenderKey(48) | ciphertext(N)"
+  },
+  "encodingVector": {
+    "description": "Encoding is a pure function of the fields: these exact bytes must be produced.",
+    "envelope": {
+      "version": 1,
+      "protocolId": 1,
+      "senderPublicKey": "96c84d4da41f8ef515f9fc37a701144bff38e5c26ecd24ca161e4de66405557e",
+      "ephemeralPublicKey": "f54b406a8b915bf431edfe3b7f0fd15e08c36c3490aaa94e949ae66d76dac512",
+      "nonce": "000102030405060708090a0b",
+      "encryptedSenderKey": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeaf",
+      "ciphertext": "666978656420706c61696e7465787420626f6479aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "encodedBytes": "010196c84d4da41f8ef515f9fc37a701144bff38e5c26ecd24ca161e4de66405557ef54b406a8b915bf431edfe3b7f0fd15e08c36c3490aaa94e949ae66d76dac512000102030405060708090a0b808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeaf666978656420706c61696e7465787420626f6479aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "isChatMessage": true,
+    "isPSKMessage": false
+  },
+  "capturedEnvelope": {
+    "description": "Produced by encryptMessage with random ephemeral material; frozen as a fixed decryption target.",
+    "plaintext": "Hello, AlgoChat conformance! The quick brown fox jumps over the lazy dog. 0123456789",
+    "envelope": {
+      "version": 1,
+      "protocolId": 1,
+      "senderPublicKey": "96c84d4da41f8ef515f9fc37a701144bff38e5c26ecd24ca161e4de66405557e",
+      "ephemeralPublicKey": "93009bcf5b7355a691f0d5eb288a4353c3b93c892a536429257122c6a3fb0d7f",
+      "nonce": "022906f26cde78258845fc2c",
+      "encryptedSenderKey": "fdd98b9c738770139e62f5e6739ae9e639a8489fac37bffc15c378c18f4e917b2b95da51c405c5bf230df25a045781db",
+      "ciphertext": "c891ae5baf8f5c771d2fd58ad661cea88630ef294ca96b97a4dd6170500de8f4f579d51e0d9ed6c4186d8a214cff2a55ba9eb08ade88157b1183a70ed7c9d3098ceca7f8fecd08e0aac1af7af5b356b9a563fa7a4ce3d0adf948f01662c2245a1e8d214c"
+    },
+    "encodedBytes": "010196c84d4da41f8ef515f9fc37a701144bff38e5c26ecd24ca161e4de66405557e93009bcf5b7355a691f0d5eb288a4353c3b93c892a536429257122c6a3fb0d7f022906f26cde78258845fc2cfdd98b9c738770139e62f5e6739ae9e639a8489fac37bffc15c378c18f4e917b2b95da51c405c5bf230df25a045781dbc891ae5baf8f5c771d2fd58ad661cea88630ef294ca96b97a4dd6170500de8f4f579d51e0d9ed6c4186d8a214cff2a55ba9eb08ade88157b1183a70ed7c9d3098ceca7f8fecd08e0aac1af7af5b356b9a563fa7a4ce3d0adf948f01662c2245a1e8d214c",
+    "decrypt": {
+      "recipientPath": {
+        "privateKey": "acb5e648bacdc9840c42b4797afda7d9dca0051ec132deb6d7fccbf690966465",
+        "publicKey": "03c831e274f4878ca6382cb0ef7993d242cdc4b9a4c12ebf5b7f7d972eed733c",
+        "plaintext": "Hello, AlgoChat conformance! The quick brown fox jumps over the lazy dog. 0123456789"
+      },
+      "senderPath": {
+        "privateKey": "a3cd9264cf97dd94830e32e70ae0b6c439760f96102dbfe4c585fe0ce2a5adbc",
+        "publicKey": "96c84d4da41f8ef515f9fc37a701144bff38e5c26ecd24ca161e4de66405557e",
+        "plaintext": "Hello, AlgoChat conformance! The quick brown fox jumps over the lazy dog. 0123456789"
+      }
+    }
+  }
+}
