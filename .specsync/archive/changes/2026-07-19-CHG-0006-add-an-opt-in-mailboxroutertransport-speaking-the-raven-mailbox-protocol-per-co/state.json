@@ -5,10 +5,10 @@
   "title": "Add an opt-in MailboxRouterTransport speaking the raven mailbox protocol: per-counter key derivation, MBR-exact put groups, atomic N-recipient fan-out, burn/reclaim/status, off-chain box reads, gated behind service config",
   "description": "Add an opt-in MailboxRouterTransport speaking the raven mailbox protocol: per-counter key derivation, MBR-exact put groups, atomic N-recipient fan-out, burn/reclaim/status, off-chain box reads, gated behind service config",
   "kind": "feature",
-  "state": "accepted",
+  "state": "archived",
   "base_commit": "ac0bd2351a2efc9da1ba7d3c424263bba3dcd5aa",
   "created_at": 1784483950,
-  "updated_at": 1784486893,
+  "updated_at": 1784488006,
   "affected_specs": [
     "algochat"
   ],

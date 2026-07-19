@@ -1,6 +1,6 @@
 ---
 id: CHG-0006-add-an-opt-in-mailboxroutertransport-speaking-the-raven-mailbox-protocol-per-co
-state: accepted
+state: archived
 type: feature
 base_commit: ac0bd2351a2efc9da1ba7d3c424263bba3dcd5aa
 ---
