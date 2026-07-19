@@ -1,6 +1,6 @@
 ---
 id: CHG-0004-install-the-conformance-ci-workflow-delivered-with-the-test-vector-suite-so-ever
-state: accepted
+state: archived
 type: feature
 base_commit: 885496a6b33d301e46fc20f4e7e7dc8f917d9e8e
 ---
