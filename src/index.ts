@@ -191,3 +191,47 @@ export {
     decryptPSKMessage,
     PSKEncryptionError,
 } from './psk/index.js';
+
+// Raven mailbox protocol (opt-in dead-drop transport; pre-audit — do not
+// point at MainNet until raven RFC 0001 Phase 3 completes)
+export {
+    MAILBOX_MSG_KEY_DOMAIN,
+    MAILBOX_ID_DOMAIN,
+    MAILBOX_MAX_ENVELOPE_SIZE,
+    MAILBOX_TTL_ROUNDS,
+    MAILBOX_BOX_FLAT_MBR,
+    MAILBOX_BOX_BYTE_MBR,
+    MAILBOX_HEADER_SIZE,
+    MAILBOX_REFUND_FEE,
+    MAILBOX_MAX_GROUP_SIZE,
+    MAILBOX_MAX_FANOUT_LEGS,
+    VIEW_SECRET_SIZE,
+    MSG_KEY_SIZE,
+    MAILBOX_ID_SIZE,
+    MAX_COUNTER,
+    MAILBOX_METHODS,
+    MailboxError,
+    InvalidViewSecretError,
+    InvalidMsgKeyError,
+    InvalidCounterError,
+    MailboxEnvelopeError,
+    MailboxFanoutLimitError,
+    deriveMsgKey,
+    deriveMailboxId,
+    mailboxMbr,
+    planMailboxPut,
+    planMailboxFanout,
+    mailboxMethodSelector,
+    type MailboxLeg,
+    type MailboxLegPlan,
+} from './blockchain/mailbox.js';
+
+export {
+    MailboxRouterTransport,
+    type MailboxTransportConfig,
+    type MailboxSubmitOptions,
+    type MailboxSendResult,
+    type MailboxFanoutResult,
+    type MailboxTxnResult,
+    type MailboxReadResult,
+} from './services/mailbox-router.service.js';
