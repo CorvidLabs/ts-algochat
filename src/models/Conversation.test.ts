@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import { Conversation } from './Conversation';
-import type { Message } from './types';
+import { Conversation } from './Conversation.js';
+import type { Message } from './types.js';
 
 function makeMessage(overrides: Partial<Message> & { id: string }): Message {
     return {

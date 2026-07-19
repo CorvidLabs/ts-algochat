@@ -6,10 +6,10 @@
  */
 
 import algosdk from 'algosdk';
-import type { Message, DiscoveredKey, MessageDirection, EncryptionOptions } from '../models/types';
-import { decryptMessage, decodeEnvelope, isChatMessage } from '../crypto';
-import { ChatError } from '../errors/ChatError';
-import type { ChatAccount } from './algorand.service';
+import type { Message, DiscoveredKey, MessageDirection, EncryptionOptions } from '../models/types.js';
+import { decryptMessage, decodeEnvelope, isChatMessage } from '../crypto/index.js';
+import { ChatError } from '../errors/ChatError.js';
+import type { ChatAccount } from './algorand.service.js';
 
 /** Configuration for the message indexer */
 export interface MessageIndexerConfig {

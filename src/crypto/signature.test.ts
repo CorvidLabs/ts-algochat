@@ -10,7 +10,7 @@ import {
     fingerprint,
     SignatureError,
     ED25519_SIGNATURE_SIZE,
-} from './signature';
+} from './signature.js';
 import { randomBytes } from '@noble/ciphers/webcrypto';
 
 describe('signature', () => {

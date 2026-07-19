@@ -3,32 +3,32 @@
  */
 
 import { describe, test, expect } from 'bun:test';
-import { deriveEncryptionKeys, uint8ArrayEquals } from '../crypto/keys';
+import { deriveEncryptionKeys, uint8ArrayEquals } from '../crypto/keys.js';
 import {
     deriveSessionPSK,
     derivePositionPSK,
     derivePSKAtCounter,
-} from './ratchet';
+} from './ratchet.js';
 import {
     encodePSKEnvelope,
     decodePSKEnvelope,
     isPSKMessage,
-} from './envelope';
+} from './envelope.js';
 import {
     encryptPSKMessage,
     decryptPSKMessage,
-} from './encryption';
+} from './encryption.js';
 import {
     createPSKState,
     validateCounter,
     recordReceive,
     advanceSendCounter,
-} from './state';
+} from './state.js';
 import {
     createPSKExchangeURI,
     parsePSKExchangeURI,
-} from './exchange';
-import { PSK_PROTOCOL } from './types';
+} from './exchange.js';
+import { PSK_PROTOCOL } from './types.js';
 
 /**
  * Helper: convert Uint8Array to hex string

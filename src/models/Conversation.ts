@@ -4,7 +4,7 @@
  * Provides a rich interface for managing conversations with helper methods.
  */
 
-import type { Message, MessageDirection } from './types';
+import type { Message, MessageDirection } from './types.js';
 
 /**
  * Represents a conversation with another user

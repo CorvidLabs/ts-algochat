@@ -11,8 +11,8 @@ import {
     validateAddress,
     publicKeyToBase64,
     base64ToPublicKey,
-} from './mnemonic.service';
-import { uint8ArrayEquals } from '../crypto/keys';
+} from './mnemonic.service.js';
+import { uint8ArrayEquals } from '../crypto/keys.js';
 
 // Test mnemonic (DO NOT USE IN PRODUCTION - this is for testing only)
 const TEST_MNEMONIC =

@@ -4,7 +4,7 @@
  * Protocol and implementation for caching messages locally.
  */
 
-import type { Message } from '../models/types';
+import type { Message } from '../models/types.js';
 
 /**
  * Protocol for message caching

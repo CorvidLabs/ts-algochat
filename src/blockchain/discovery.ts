@@ -6,10 +6,10 @@
  */
 
 import algosdk from 'algosdk';
-import type { DiscoveredKey } from '../models/types';
-import type { IndexerClient } from './interfaces';
-import type { NoteTransaction } from './types';
-import { verifyEncryptionKey } from '../crypto';
+import type { DiscoveredKey } from '../models/types.js';
+import type { IndexerClient } from './interfaces.js';
+import type { NoteTransaction } from './types.js';
+import { verifyEncryptionKey } from '../crypto/index.js';
 
 /** Default page size for paginated key discovery. */
 const DEFAULT_DISCOVERY_PAGE_SIZE = 100;

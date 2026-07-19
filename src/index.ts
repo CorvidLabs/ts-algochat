@@ -52,18 +52,18 @@ export type {
     PendingMessage,
     PendingMessageStatus,
     EncryptionOptions,
-} from './models/types';
+} from './models/types.js';
 
-export { PROTOCOL, SendOptionsPresets } from './models/types';
+export { PROTOCOL, SendOptionsPresets } from './models/types.js';
 
 // Conversation class
-export { Conversation } from './models/Conversation';
+export { Conversation } from './models/Conversation.js';
 
 // Storage
 export type {
     MessageCache,
     EncryptionKeyStorage,
-} from './storage';
+} from './storage/index.js';
 
 export {
     InMemoryMessageCache,
@@ -74,7 +74,7 @@ export {
     PasswordRequiredError,
     DecryptionFailedError,
     InvalidKeyDataError,
-} from './storage';
+} from './storage/index.js';
 
 // Crypto functions
 export {
@@ -98,7 +98,7 @@ export {
     ED25519_SIGNATURE_SIZE,
     ED25519_PUBLIC_KEY_SIZE,
     X25519_PUBLIC_KEY_SIZE,
-} from './crypto';
+} from './crypto/index.js';
 
 // Errors
 export {
@@ -106,12 +106,12 @@ export {
     ChatErrorCode,
     isChatError,
     wrapError,
-} from './errors';
+} from './errors/index.js';
 
 // Caches (re-export from cache for backwards compatibility)
 export {
     type MessageCache as LegacyMessageCache,
-} from './cache';
+} from './cache/index.js';
 
 // Queue and sync
 export {
@@ -125,7 +125,7 @@ export {
     type SyncEvents,
     type SyncManagerConfig,
     // FileSendQueueStorage - Node.js only, import from 'ts-algochat/node' if needed
-} from './queue';
+} from './queue/index.js';
 
 // Blockchain interfaces (abstract)
 export type {
@@ -138,7 +138,7 @@ export type {
     AccountInfo,
     PaginatedTransactions,
     DiscoverKeyOptions,
-} from './blockchain';
+} from './blockchain/index.js';
 
 export {
     localnet,
@@ -148,7 +148,7 @@ export {
     parseKeyAnnouncement,
     discoverEncryptionKey,
     discoverEncryptionKeyFromMessages,
-} from './blockchain';
+} from './blockchain/index.js';
 
 // Services (concrete implementations)
 export {
@@ -165,7 +165,7 @@ export {
     type MessageIndexerConfig,
     type PaginationOptions,
     type WaitForTransactionOptions,
-} from './services';
+} from './services/index.js';
 
 // PSK (Pre-Shared Key) v1.1 Protocol
 export {
@@ -190,4 +190,4 @@ export {
     encryptPSKMessage,
     decryptPSKMessage,
     PSKEncryptionError,
-} from './psk';
+} from './psk/index.js';

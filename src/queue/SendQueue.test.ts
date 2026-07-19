@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import { SendQueue, InMemorySendQueueStorage } from './SendQueue';
-import type { EnqueueOptions } from './SendQueue';
+import { SendQueue, InMemorySendQueueStorage } from './SendQueue.js';
+import type { EnqueueOptions } from './SendQueue.js';
 
 const defaultOpts: EnqueueOptions = {
     recipient: 'BOB_ADDRESS',

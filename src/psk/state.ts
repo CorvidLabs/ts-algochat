@@ -4,7 +4,7 @@
  * Manages send/receive counters for replay protection with a sliding window.
  */
 
-import { PSK_PROTOCOL, type PSKState } from './types';
+import { PSK_PROTOCOL, type PSKState } from './types.js';
 
 /**
  * Creates a new PSK state with initial counter values.

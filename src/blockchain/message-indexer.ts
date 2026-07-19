@@ -6,8 +6,8 @@
  * and discovering encryption keys.
  */
 
-import type { IndexerClient } from './interfaces';
-import type { NoteTransaction } from './types';
+import type { IndexerClient } from './interfaces.js';
+import type { NoteTransaction } from './types.js';
 import type {
     Message,
     MessageDirection,
@@ -15,9 +15,9 @@ import type {
     DiscoveredKey,
     ReplyContext,
     X25519KeyPair,
-} from '../models/types';
-import { decodeEnvelope, isChatMessage } from '../crypto/envelope';
-import { decryptMessage } from '../crypto';
+} from '../models/types.js';
+import { decodeEnvelope, isChatMessage } from '../crypto/envelope.js';
+import { decryptMessage } from '../crypto/index.js';
 
 /** Default page size for fetching messages */
 export const DEFAULT_PAGE_SIZE = 50;

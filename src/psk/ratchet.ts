@@ -9,7 +9,7 @@
 
 import { hkdf } from '@noble/hashes/hkdf';
 import { sha256 } from '@noble/hashes/sha256';
-import { PSK_PROTOCOL } from './types';
+import { PSK_PROTOCOL } from './types.js';
 
 const SESSION_SALT = new TextEncoder().encode('AlgoChat-PSK-Session');
 const POSITION_SALT = new TextEncoder().encode('AlgoChat-PSK-Position');

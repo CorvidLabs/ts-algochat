@@ -5,9 +5,9 @@
  */
 
 import algosdk from 'algosdk';
-import type { Message, Conversation, SendResult, SendOptions, X25519KeyPair, DiscoveredKey, EncryptionOptions } from '../models/types';
-import { encryptMessage, encryptReply, decryptMessage, encodeEnvelope, decodeEnvelope, isChatMessage } from '../crypto';
-import { ChatError } from '../errors/ChatError';
+import type { Message, Conversation, SendResult, SendOptions, X25519KeyPair, DiscoveredKey, EncryptionOptions } from '../models/types.js';
+import { encryptMessage, encryptReply, decryptMessage, encodeEnvelope, decodeEnvelope, isChatMessage } from '../crypto/index.js';
+import { ChatError } from '../errors/ChatError.js';
 
 export interface AlgorandConfig {
     algodToken: string;

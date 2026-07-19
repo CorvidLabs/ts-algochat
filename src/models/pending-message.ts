@@ -4,7 +4,7 @@
  * Types for managing messages queued for sending (offline support).
  */
 
-import type { ReplyContext } from './types';
+import type { ReplyContext } from './types.js';
 
 /** Status of a pending message in the send queue */
 export type PendingStatus = 'pending' | 'sending' | 'failed' | 'sent';

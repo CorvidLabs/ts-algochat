@@ -6,9 +6,9 @@
  */
 
 import { describe, test, expect } from 'bun:test';
-import { AlgorandService, type AlgorandConfig } from './algorand.service';
-import { createRandomChatAccount } from './mnemonic.service';
-import { encryptMessage, encodeEnvelope } from '../crypto';
+import { AlgorandService, type AlgorandConfig } from './algorand.service.js';
+import { createRandomChatAccount } from './mnemonic.service.js';
+import { encryptMessage, encodeEnvelope } from '../crypto/index.js';
 
 const TEST_CONFIG: AlgorandConfig = {
     algodToken: 'test-token',

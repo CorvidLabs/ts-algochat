@@ -4,11 +4,11 @@
  * Manages background synchronization of messages and queue processing.
  */
 
-import type { Message, SendResult } from '../models/types';
-import type { ChatAccount } from '../services/algorand.service';
-import type { AlgorandService } from '../services/algorand.service';
-import { SendQueue, type EnqueueOptions } from './SendQueue';
-import { Conversation } from '../models/Conversation';
+import type { Message, SendResult } from '../models/types.js';
+import type { ChatAccount } from '../services/algorand.service.js';
+import type { AlgorandService } from '../services/algorand.service.js';
+import { SendQueue, type EnqueueOptions } from './SendQueue.js';
+import { Conversation } from '../models/Conversation.js';
 
 /** Sync state */
 export type SyncState = 'idle' | 'syncing' | 'offline';

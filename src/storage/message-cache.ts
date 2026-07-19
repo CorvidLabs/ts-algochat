@@ -4,7 +4,7 @@
  * Interface and implementations for caching messages locally.
  */
 
-import type { Message } from '../models/types';
+import type { Message } from '../models/types.js';
 
 /** Interface for storing and retrieving messages */
 export interface MessageCache {

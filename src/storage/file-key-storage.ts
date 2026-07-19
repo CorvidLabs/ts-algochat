@@ -24,13 +24,13 @@ import { mkdir, readdir, readFile, unlink, writeFile, chmod, access } from 'node
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { randomBytes, pbkdf2Sync, createCipheriv, createDecipheriv } from 'node:crypto';
-import type { EncryptionKeyStorage } from './encryption-key-storage';
-import { KeyNotFoundError } from './encryption-key-storage';
+import type { EncryptionKeyStorage } from './encryption-key-storage.js';
+import { KeyNotFoundError } from './encryption-key-storage.js';
 import {
     PasswordRequiredError,
     DecryptionFailedError,
     InvalidKeyDataError,
-} from './file-key-storage.errors';
+} from './file-key-storage.errors.js';
 
 // Re-export errors for backwards compatibility
 export { PasswordRequiredError, DecryptionFailedError, InvalidKeyDataError };

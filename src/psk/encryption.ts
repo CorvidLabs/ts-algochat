@@ -8,10 +8,10 @@
 
 import { chacha20poly1305 } from '@noble/ciphers/chacha';
 import { randomBytes } from '@noble/ciphers/webcrypto';
-import { generateEphemeralKeyPair, x25519ECDH, uint8ArrayEquals } from '../crypto/keys';
-import { type DecryptedContent } from '../models/types';
-import { PSK_PROTOCOL, type PSKEnvelope } from './types';
-import { deriveHybridSymmetricKey, deriveSenderKey } from './ratchet';
+import { generateEphemeralKeyPair, x25519ECDH, uint8ArrayEquals } from '../crypto/keys.js';
+import { type DecryptedContent } from '../models/types.js';
+import { PSK_PROTOCOL, type PSKEnvelope } from './types.js';
+import { deriveHybridSymmetricKey, deriveSenderKey } from './ratchet.js';
 
 export class PSKEncryptionError extends Error {
     constructor(message: string) {

@@ -17,8 +17,8 @@ export type {
     PendingMessage,
     PendingMessageStatus,
     EncryptionOptions,
-} from './types';
+} from './types.js';
 
-export { PROTOCOL, SendOptionsPresets } from './types';
+export { PROTOCOL, SendOptionsPresets } from './types.js';
 
-export { Conversation } from './Conversation';
+export { Conversation } from './Conversation.js';
