@@ -1,0 +1,11 @@
+{
+  "approvals": [
+    {
+      "gate": "definition",
+      "actor": "user:0xLeif",
+      "timestamp": 1784477693,
+      "digest": "bbc8fa706912ef9e19e55dcf82be7dfa15d13c732454b2304e1afeb01cf32e04",
+      "note": "Definition reviewed and authorized by the repository owner: completes the conformance CI installation superseding archived CHG-0004; CI orchestration only, no spec change"
+    }
+  ]
+}
