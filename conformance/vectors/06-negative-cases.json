@@ -1,0 +1,87 @@
+{
+  "tool": "@corvidlabs/ts-algochat conformance generator",
+  "libraryVersion": "0.4.1",
+  "generatedBy": "reference implementation (TypeScript)",
+  "note": "All byte strings are lowercase hex. All inputs are fixed test values; none are secret.",
+  "file": "06-negative-cases",
+  "description": "Mandatory failure behavior. \"null\" = decrypt returns null without plaintext. \"throw\" = typed error, no partial output. An implementation MUST NOT emit plaintext in any of these cases.",
+  "cases": [
+    {
+      "name": "tampered ciphertext (last byte flipped)",
+      "input": "010196c84d4da41f8ef515f9fc37a701144bff38e5c26ecd24ca161e4de66405557e93009bcf5b7355a691f0d5eb288a4353c3b93c892a536429257122c6a3fb0d7f022906f26cde78258845fc2cfdd98b9c738770139e62f5e6739ae9e639a8489fac37bffc15c378c18f4e917b2b95da51c405c5bf230df25a045781dbc891ae5baf8f5c771d2fd58ad661cea88630ef294ca96b97a4dd6170500de8f4f579d51e0d9ed6c4186d8a214cff2a55ba9eb08ade88157b1183a70ed7c9d3098ceca7f8fecd08e0aac1af7af5b356b9a563fa7a4ce3d0adf948f01662c2245a1e8d21b3",
+      "expect": {
+        "result": "throw",
+        "error": "Error"
+      }
+    },
+    {
+      "name": "tampered encryptedSenderKey — recipient path (documented: unaffected)",
+      "input": "010196c84d4da41f8ef515f9fc37a701144bff38e5c26ecd24ca161e4de66405557e93009bcf5b7355a691f0d5eb288a4353c3b93c892a536429257122c6a3fb0d7f022906f26cde78258845fc2cfdd98b9c738770139e62f5e6739ae9e639a8489fac37bffc15c378c18f4e917b2b95da51c405c5bf230df25a04578124c891ae5baf8f5c771d2fd58ad661cea88630ef294ca96b97a4dd6170500de8f4f579d51e0d9ed6c4186d8a214cff2a55ba9eb08ade88157b1183a70ed7c9d3098ceca7f8fecd08e0aac1af7af5b356b9a563fa7a4ce3d0adf948f01662c2245a1e8d214c",
+      "note": "The recipient path decrypts via ephemeral-key ECDH and never reads encryptedSenderKey; the field exists solely for the sender path, which authenticates it with its own AEAD tag.",
+      "expect": {
+        "result": "plaintext",
+        "text": "Hello, AlgoChat conformance! The quick brown fox jumps over the lazy dog. 0123456789"
+      }
+    },
+    {
+      "name": "tampered encryptedSenderKey — sender path (must fail)",
+      "input": "010196c84d4da41f8ef515f9fc37a701144bff38e5c26ecd24ca161e4de66405557e93009bcf5b7355a691f0d5eb288a4353c3b93c892a536429257122c6a3fb0d7f022906f26cde78258845fc2cfdd98b9c738770139e62f5e6739ae9e639a8489fac37bffc15c378c18f4e917b2b95da51c405c5bf230df25a04578124c891ae5baf8f5c771d2fd58ad661cea88630ef294ca96b97a4dd6170500de8f4f579d51e0d9ed6c4186d8a214cff2a55ba9eb08ade88157b1183a70ed7c9d3098ceca7f8fecd08e0aac1af7af5b356b9a563fa7a4ce3d0adf948f01662c2245a1e8d214c",
+      "note": "The sender path unwraps its own copy key; a flipped byte breaks that AEAD tag.",
+      "expect": {
+        "result": "throw",
+        "error": "Error"
+      }
+    },
+    {
+      "name": "wrong private key (A tries to read B’s copy)",
+      "input": "010196c84d4da41f8ef515f9fc37a701144bff38e5c26ecd24ca161e4de66405557e93009bcf5b7355a691f0d5eb288a4353c3b93c892a536429257122c6a3fb0d7f022906f26cde78258845fc2cfdd98b9c738770139e62f5e6739ae9e639a8489fac37bffc15c378c18f4e917b2b95da51c405c5bf230df25a045781dbc891ae5baf8f5c771d2fd58ad661cea88630ef294ca96b97a4dd6170500de8f4f579d51e0d9ed6c4186d8a214cff2a55ba9eb08ade88157b1183a70ed7c9d3098ceca7f8fecd08e0aac1af7af5b356b9a563fa7a4ce3d0adf948f01662c2245a1e8d214c",
+      "note": "uses valid envelope with unrelated key material",
+      "expect": {
+        "result": "throw",
+        "error": "Error"
+      }
+    },
+    {
+      "name": "truncated note (40 bytes)",
+      "input": "010196c84d4da41f8ef515f9fc37a701144bff38e5c26ecd24ca161e4de66405557e93009bcf5b73",
+      "expect": {
+        "result": "throw",
+        "error": "EnvelopeError"
+      }
+    },
+    {
+      "name": "unsupported version byte 0xff",
+      "input": "ff0196c84d4da41f8ef515f9fc37a701144bff38e5c26ecd24ca161e4de66405557e93009bcf5b7355a691f0d5eb288a4353c3b93c892a536429257122c6a3fb0d7f022906f26cde78258845fc2cfdd98b9c738770139e62f5e6739ae9e639a8489fac37bffc15c378c18f4e917b2b95da51c405c5bf230df25a045781dbc891ae5baf8f5c771d2fd58ad661cea88630ef294ca96b97a4dd6170500de8f4f579d51e0d9ed6c4186d8a214cff2a55ba9eb08ade88157b1183a70ed7c9d3098ceca7f8fecd08e0aac1af7af5b356b9a563fa7a4ce3d0adf948f01662c2245a1e8d214c",
+      "expect": {
+        "result": "throw",
+        "error": "EnvelopeError"
+      }
+    },
+    {
+      "name": "random bytes classification",
+      "input": "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+      "expect": {
+        "result": "classified",
+        "isChatMessage": false,
+        "isPSKMessage": false
+      }
+    },
+    {
+      "name": "PSK envelope: tampered ciphertext",
+      "input": "01020000000096c84d4da41f8ef515f9fc37a701144bff38e5c26ecd24ca161e4de66405557ee0c7f982b62884d87bc5eba2859b449047961a7ebe51a49987f3e9900287470ce31c27fe4238f77f617fdaa009ae6a6b233bbc734f7a6befdda80c18f3ef63707dbc2b7672fc6ec477b8bc71e8b0bc4f48b552ca53f5a1df78fa967435b6664fc324d856836490a1dec72b97ad0447a777730716c5342ed92db1b262ec3ea711b2ec424277a2782ed4a36f74df4d3f3b676181512937ccde5d0581a6b12cbf99e545c83903c617f302885b992d602b8283a2",
+      "expect": {
+        "result": "throw",
+        "error": "Error"
+      }
+    },
+    {
+      "name": "PSK envelope: wrong ratchet position key (counter 1 instead of 0)",
+      "input": "01020000000096c84d4da41f8ef515f9fc37a701144bff38e5c26ecd24ca161e4de66405557ee0c7f982b62884d87bc5eba2859b449047961a7ebe51a49987f3e9900287470ce31c27fe4238f77f617fdaa009ae6a6b233bbc734f7a6befdda80c18f3ef63707dbc2b7672fc6ec477b8bc71e8b0bc4f48b552ca53f5a1df78fa967435b6664fc324d856836490a1dec72b97ad0447a777730716c5342ed92db1b262ec3ea711b2ec424277a2782ed4a36f74df4d3f3b676181512937ccde5d0581a6b12cbf99e545c83903c617f302885b992d602b82835d",
+      "expect": {
+        "result": "throw",
+        "error": "Error"
+      }
+    }
+  ],
+  "invariant": "Decoders reject unsupported versions, truncated fields, and unauthenticated ciphertext rather than returning partial content (spec invariant 2)."
+}
