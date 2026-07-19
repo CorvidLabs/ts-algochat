@@ -1,6 +1,6 @@
 ---
 module: algochat
-version: 3
+version: 4
 status: stable
 files:
   - src/index.ts
@@ -199,44 +199,42 @@ Provides the TypeScript implementation of the AlgoChat encrypted-messaging proto
 | `canRetry` | Immutable pending-message lifecycle or retry helper. |
 | `FileSendQueueStorage` | Queue, cache, or key-storage abstraction with the persistence behavior defined below. |
 | `FileKeyStorage` | Queue, cache, or key-storage abstraction with the persistence behavior defined below. |
-
-### Protocol models and standard cryptography
-
-The model exports define keys, envelopes, decrypted content, replies, messages,
-conversations, send results and options, discovered keys, pending delivery, and
-protocol constants. `Conversation` owns chronological message operations.
-Key helpers derive deterministic account keys or fresh ephemeral keys.
-`encryptMessage`, `encryptReply`, and `decryptMessage` provide
-bidirectional authenticated encryption; envelope helpers enforce the binary
-format. Signature helpers bind an Ed25519 identity to an X25519 announcement.
-
-### PSK protocol
-
-The PSK surface implements AlgoChat 1.1 hybrid ECDH/PSK encryption. Session and
-position derivation create the two-level 100-message ratchet. State helpers
-advance send counters and maintain the receive replay window. PSK envelope
-helpers enforce its counter-bearing binary format, while the exchange helpers
-round-trip the out-of-band `algochat://` URI.
-
-### Blockchain and service boundary
-
-`AlgodClient` and `IndexerClient` are injectable network boundaries.
-Network constructors provide localnet, testnet, mainnet, and optional indexer
-configuration. Discovery verifies key announcements; transaction helpers build
-and sign minimum-payment note transfers under the 1,024-byte limit. The two
-`MessageIndexer` surfaces provide low-level key search and high-level
-paginated message/conversation retrieval. `AlgorandService` composes these
-operations with account creation, send, reply, fetch, and confirmation flows.
-
-### Queue, cache, storage, and errors
-
-`SendQueue` and `SyncManager` coordinate persisted offline delivery,
-bounded retry, connectivity, and synchronization. In-memory and file-backed
-cache/storage exports provide message, public-key, encryption-key, and queue
-persistence. Typed storage failures distinguish absent passwords, missing
-keys, authentication failures, and invalid data. `ChatErrorCode`,
-`ChatError`, `isChatError`, and `wrapError` preserve stable error
-classification and contextual causes across the package.
+| `MailboxRouterTransport` | Opt-in raven mailbox transport: put, atomic fan-out put, burn, reclaim, and off-chain box reads against a configured router app id. |
+| `MailboxTransportConfig` | Typed protocol, configuration, or result contract defined by this module. |
+| `MailboxSubmitOptions` | Typed protocol, configuration, or result contract defined by this module. |
+| `MailboxLeg` | Typed protocol, configuration, or result contract defined by this module. |
+| `MailboxLegPlan` | Typed protocol, configuration, or result contract defined by this module. |
+| `MailboxSendResult` | Typed protocol, configuration, or result contract defined by this module. |
+| `MailboxFanoutResult` | Typed protocol, configuration, or result contract defined by this module. |
+| `MailboxReadResult` | Typed protocol, configuration, or result contract defined by this module. |
+| `MailboxTxnResult` | Typed protocol, configuration, or result contract defined by this module. |
+| `deriveMsgKey` | Deterministic raven mailbox key-derivation operation defined below. |
+| `deriveMailboxId` | Deterministic raven mailbox key-derivation operation defined below. |
+| `mailboxMbr` | Exact mailbox box-MBR computation defined below. |
+| `planMailboxPut` | Pure mailbox put planning operation defined below. |
+| `planMailboxFanout` | Pure mailbox atomic fan-out planning operation defined below. |
+| `mailboxMethodSelector` | ARC-4 method selector derivation defined below. |
+| `MAILBOX_METHODS` | Published protocol value, size boundary, preset, or search default. |
+| `MAILBOX_MSG_KEY_DOMAIN` | Published protocol value, size boundary, preset, or search default. |
+| `MAILBOX_ID_DOMAIN` | Published protocol value, size boundary, preset, or search default. |
+| `MAILBOX_MAX_ENVELOPE_SIZE` | Published protocol value, size boundary, preset, or search default. |
+| `MAILBOX_TTL_ROUNDS` | Published protocol value, size boundary, preset, or search default. |
+| `MAILBOX_BOX_FLAT_MBR` | Published protocol value, size boundary, preset, or search default. |
+| `MAILBOX_BOX_BYTE_MBR` | Published protocol value, size boundary, preset, or search default. |
+| `MAILBOX_HEADER_SIZE` | Published protocol value, size boundary, preset, or search default. |
+| `MAILBOX_REFUND_FEE` | Published protocol value, size boundary, preset, or search default. |
+| `MAILBOX_MAX_GROUP_SIZE` | Published protocol value, size boundary, preset, or search default. |
+| `MAILBOX_MAX_FANOUT_LEGS` | Published protocol value, size boundary, preset, or search default. |
+| `VIEW_SECRET_SIZE` | Published protocol value, size boundary, preset, or search default. |
+| `MSG_KEY_SIZE` | Published protocol value, size boundary, preset, or search default. |
+| `MAILBOX_ID_SIZE` | Published protocol value, size boundary, preset, or search default. |
+| `MAX_COUNTER` | Published protocol value, size boundary, preset, or search default. |
+| `MailboxError` | Typed failure or stable error classification for the named operation. |
+| `InvalidViewSecretError` | Typed failure or stable error classification for the named operation. |
+| `InvalidMsgKeyError` | Typed failure or stable error classification for the named operation. |
+| `InvalidCounterError` | Typed failure or stable error classification for the named operation. |
+| `MailboxEnvelopeError` | Typed failure or stable error classification for the named operation. |
+| `MailboxFanoutLimitError` | Typed failure or stable error classification for the named operation. |
 
 ## Invariants
 
@@ -296,3 +294,4 @@ Then SendQueue processes eligible entries in order, records failures for retry, 
 | 1 | 2026-07-13 | Adopted SpecSync 5 and Trust 1 governance without a canonical product specification |
 | 2 | 2026-07-14 | Added the stable full-library contract for the existing implementation and tests |
 | 3 | 2026-07-14 | CHG-0002-replace-the-incomplete-no-spec-rationale-with-a-stable-full-library-algochat-con: Replace the incomplete no-spec rationale with a stable full-library AlgoChat contract covering every existing source, export, invariant, failure mode, and native test boundary |
+| 2026-07-19 | CHG-0006-add-an-opt-in-mailboxroutertransport-speaking-the-raven-mailbox-protocol-per-co: Add an opt-in MailboxRouterTransport speaking the raven mailbox protocol: per-counter key derivation, MBR-exact put groups, atomic N-recipient fan-out, burn/reclaim/status, off-chain box reads, gated behind service config |
