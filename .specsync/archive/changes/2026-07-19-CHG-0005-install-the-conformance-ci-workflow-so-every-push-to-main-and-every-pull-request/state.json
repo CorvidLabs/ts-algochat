@@ -5,10 +5,10 @@
   "title": "Install the conformance CI workflow so every push to main and every pull request runs the unit tests, the 79 conformance checks, and the deterministic-vector regeneration guard; supersedes archived CHG-0004, whose deliverable landed on this branch before its installation could be verified in place",
   "description": "Install the conformance CI workflow so every push to main and every pull request runs the unit tests, the 79 conformance checks, and the deterministic-vector regeneration guard; supersedes archived CHG-0004, whose deliverable landed on this branch before its installation could be verified in place",
   "kind": "feature",
-  "state": "accepted",
+  "state": "archived",
   "base_commit": "af196bb37f92bbcb42b93b9e909b63270111929e",
   "created_at": 1784477576,
-  "updated_at": 1784477916,
+  "updated_at": 1784478410,
   "affected_specs": [],
   "affected_paths": [
     ".github/workflows/conformance.yml"
