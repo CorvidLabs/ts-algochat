@@ -6,6 +6,13 @@
       "timestamp": 1784436788,
       "digest": "6f377c50a18c1704167afb0efe6548edc567b23f48b663544586f6ced2a3e930",
       "note": "Definition reviewed and authorized by the repository owner: installs the merged conformance CI template verbatim; CI orchestration only, no spec change"
+    },
+    {
+      "gate": "definition",
+      "actor": "user:0xLeif",
+      "timestamp": 1784437361,
+      "digest": "f2b5ba7d46cdb7a95e3c0aa211620ab182b8325c244417014b38316731fb22fe",
+      "note": "Re-approved after completing the task list wording for verification; definition unchanged: install the merged conformance CI template verbatim, CI orchestration only"
     }
   ]
 }
