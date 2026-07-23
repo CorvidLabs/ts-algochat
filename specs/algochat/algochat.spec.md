@@ -1,6 +1,6 @@
 ---
 module: algochat
-version: 4
+version: 5
 status: stable
 files:
   - src/index.ts
@@ -297,3 +297,4 @@ Then SendQueue processes eligible entries in order, records failures for retry, 
 | 3 | 2026-07-14 | CHG-0002-replace-the-incomplete-no-spec-rationale-with-a-stable-full-library-algochat-con: Replace the incomplete no-spec rationale with a stable full-library AlgoChat contract covering every existing source, export, invariant, failure mode, and native test boundary |
 | 2026-07-19 | CHG-0006-add-an-opt-in-mailboxroutertransport-speaking-the-raven-mailbox-protocol-per-co: Add an opt-in MailboxRouterTransport speaking the raven mailbox protocol: per-counter key derivation, MBR-exact put groups, atomic N-recipient fan-out, burn/reclaim/status, off-chain box reads, gated behind service config |
 | 2026-07-19 | Fix MailboxRouterTransport for real algod: ARC-4-encode put envelopes; include depositor in burn/reclaim foreign accounts for inner refunds |
+| 2026-07-23 | CHG-0007-fix-mailboxroutertransport-for-real-algod-arc-4-encode-put-envelopes-include-d: Fix MailboxRouterTransport for real algod: ARC-4-encode put envelopes; include depositor in burn/reclaim foreign accounts for inner refunds |
