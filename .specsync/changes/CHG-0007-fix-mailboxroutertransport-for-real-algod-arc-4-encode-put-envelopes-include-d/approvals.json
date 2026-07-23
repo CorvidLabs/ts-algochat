@@ -1,0 +1,39 @@
+{
+  "approvals": [
+    {
+      "gate": "definition",
+      "actor": "root",
+      "timestamp": 1784816273,
+      "digest": "78d9bd335e4b5648193d9a3e4a72f2c2d2afd66773072d54079e398897099655",
+      "note": null
+    },
+    {
+      "gate": "definition",
+      "actor": "root",
+      "timestamp": 1784816474,
+      "digest": "effbc7e6c71de18e59757fd6aaea21f2f58c5e3922800ea0db306f68d88e00e6",
+      "note": null
+    },
+    {
+      "gate": "definition",
+      "actor": "root",
+      "timestamp": 1784816561,
+      "digest": "effbc7e6c71de18e59757fd6aaea21f2f58c5e3922800ea0db306f68d88e00e6",
+      "note": null
+    },
+    {
+      "gate": "definition",
+      "actor": "root",
+      "timestamp": 1784816588,
+      "digest": "a32bd58be419b336be43fda605edf89dd564954802fdcc85c5154f0f3d1a6697",
+      "note": null
+    },
+    {
+      "gate": "acceptance",
+      "actor": "root",
+      "timestamp": 1784816603,
+      "digest": "4f23e9f28f4fec5fead7970174f62f7a37737c4251a23dd65c4ad276c1d47af3",
+      "note": null
+    }
+  ]
+}
