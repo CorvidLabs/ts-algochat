@@ -1,6 +1,6 @@
 ---
 module: algochat
-version: 4
+version: 5
 status: stable
 files:
   - src/index.ts
@@ -148,6 +148,10 @@ Provides the TypeScript implementation of the AlgoChat encrypted-messaging proto
 | `AlgorandService` | Public orchestration type whose lifecycle and failure behavior are defined below. |
 | `AlgorandConfig` | Typed protocol, configuration, or result contract defined by this module. |
 | `ChatAccount` | Typed protocol, configuration, or result contract defined by this module. |
+| `SIGNING_SCHEME` | Published protocol value, size boundary, preset, or search default. |
+| `SigningScheme` | Typed protocol, configuration, or result contract defined by this module. |
+| `ChatAccountOptions` | Typed protocol, configuration, or result contract defined by this module. |
+| `FALCON_FEE_MULTIPLIER` | Published protocol value, size boundary, preset, or search default. |
 | `createChatAccountFromMnemonic` | Account validation, creation, or public-key serialization helper. |
 | `createRandomChatAccount` | Account validation, creation, or public-key serialization helper. |
 | `validateMnemonic` | Account validation, creation, or public-key serialization helper. |
@@ -248,6 +252,7 @@ Provides the TypeScript implementation of the AlgoChat encrypted-messaging proto
 8. File-backed secrets and queue state use authenticated encryption or atomic replacement and never silently substitute corrupt persisted data.
 9. Network clients remain injectable so protocol behavior can be verified without live Algorand mutation.
 10. The package does not claim metadata privacy: account addresses, transaction timing, and on-chain activity remain observable.
+11. Encryption keys are derived from 32-byte mnemonic entropy for every scheme. `createRandomChatAccount()` defaults to Falcon-1024 `pqsig`. `createChatAccountFromMnemonic` without a scheme recovers Ed25519. The same mnemonic yields identical X25519 keys and different addresses across schemes. Falcon payments use at least `minFee * FALCON_FEE_MULTIPLIER` (3).
 
 ## Behavioral Examples
 
@@ -283,7 +288,8 @@ Then SendQueue processes eligible entries in order, records failures for retry, 
 
 ## Dependencies
 
-- `algosdk` for Algorand accounts, transactions, encoding, and clients.
+- `algosdk` ≥ 3.7.0 for Algorand accounts, `pqsig`, encoding, and clients.
+- `falcon-1024` for deterministic Falcon-1024 keygen and compressed signatures.
 - `@noble/curves`, `@noble/ciphers`, and `@noble/hashes` for X25519, Ed25519, ChaCha20-Poly1305, HKDF, and hashes.
 - Bun for the deterministic TypeScript test suite and TypeScript for declaration/build validation.
 
@@ -295,3 +301,5 @@ Then SendQueue processes eligible entries in order, records failures for retry, 
 | 2 | 2026-07-14 | Added the stable full-library contract for the existing implementation and tests |
 | 3 | 2026-07-14 | CHG-0002-replace-the-incomplete-no-spec-rationale-with-a-stable-full-library-algochat-con: Replace the incomplete no-spec rationale with a stable full-library AlgoChat contract covering every existing source, export, invariant, failure mode, and native test boundary |
 | 2026-07-19 | CHG-0006-add-an-opt-in-mailboxroutertransport-speaking-the-raven-mailbox-protocol-per-co: Add an opt-in MailboxRouterTransport speaking the raven mailbox protocol: per-counter key derivation, MBR-exact put groups, atomic N-recipient fan-out, burn/reclaim/status, off-chain box reads, gated behind service config |
+| 5 | 2026-08-27 | Default new ChatAccounts to Falcon-1024 `pqsig`; mnemonic import without a scheme stays Ed25519; encryption seed is mnemonic entropy; Falcon min fee is 3× |
+| 5 | 2026-08-27 | CHG-0007-falcon-default-chataccounts: Default new ChatAccounts to Falcon-1024 pqsig while mnemonic import stays Ed25519 |

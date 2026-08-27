@@ -153,8 +153,12 @@ export {
 // Services (concrete implementations)
 export {
     AlgorandService,
+    FALCON_FEE_MULTIPLIER,
     type AlgorandConfig,
     type ChatAccount,
+    SIGNING_SCHEME,
+    type SigningScheme,
+    type ChatAccountOptions,
     createChatAccountFromMnemonic,
     createRandomChatAccount,
     validateMnemonic,
