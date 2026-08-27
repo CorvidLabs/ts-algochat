@@ -19,6 +19,13 @@
       "approved_delta_digests": {
         "algochat": "26b15c233333b32c0844fa564375afd5d4e66d6496cb04c46924936bb4a2062d"
       }
+    },
+    {
+      "gate": "acceptance",
+      "actor": "0xLeif",
+      "timestamp": 1787873978,
+      "digest": "d629aa80512cb3f83e660435c0b52dda414a7023413bb346196156cff38e5b1d",
+      "note": "Closing approval for SpecSync 6 RC Falcon ChatAccounts."
     }
   ],
   "reopenings": []

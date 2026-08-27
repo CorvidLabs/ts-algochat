@@ -6,11 +6,11 @@
   "title": "Default new ChatAccounts to Falcon-1024 pqsig while mnemonic import stays Ed25519",
   "description": "Default new ChatAccounts to Falcon-1024 pqsig while mnemonic import stays Ed25519",
   "kind": "feature",
-  "state": "verifying",
+  "state": "accepted",
   "canonical_applied": true,
   "base_commit": "6a875deb73f137c99705e1eb353406398ad20e83",
   "created_at": 1787870880,
-  "updated_at": 1787873741,
+  "updated_at": 1787873978,
   "affected_specs": [
     "algochat"
   ],
