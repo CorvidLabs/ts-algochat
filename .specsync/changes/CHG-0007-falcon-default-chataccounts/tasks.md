@@ -9,5 +9,5 @@ artifact: tasks
 - [x] Falcon default create; Ed25519 default import
 - [x] AlgorandService signs via txnSigner; 3× Falcon fee
 - [x] Tests and README/spec
-- [ ] fledge lanes run verify
-- [ ] Reviewable PR (human definition approval)
+- [x] fledge lanes run verify
+- [x] Reviewable PR (human definition approval)
