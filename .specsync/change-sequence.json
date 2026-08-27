@@ -1,6 +1,6 @@
 {
-  "schema_version": 1,
-  "sequence": 6,
-  "id": "CHG-0006-add-an-opt-in-mailboxroutertransport-speaking-the-raven-mailbox-protocol-per-co",
-  "acknowledged_collisions": []
+    "schema_version": 1,
+    "sequence": 7,
+    "id": "CHG-0007-falcon-default-chataccounts",
+    "acknowledged_collisions": []
 }

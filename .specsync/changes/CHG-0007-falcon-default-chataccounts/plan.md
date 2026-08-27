@@ -1,5 +1,5 @@
 ---
-change: default-new-chataccounts-to-falcon-1024-pqsig-while-mnemonic-import-stays-ed25519
+change: CHG-0007-falcon-default-chataccounts
 artifact: plan
 ---
 

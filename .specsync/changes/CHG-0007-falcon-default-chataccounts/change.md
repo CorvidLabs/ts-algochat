@@ -1,5 +1,5 @@
 ---
-id: default-new-chataccounts-to-falcon-1024-pqsig-while-mnemonic-import-stays-ed25519
+id: CHG-0007-falcon-default-chataccounts
 state: draft
 type: feature
 base_commit: 6a875deb73f137c99705e1eb353406398ad20e83
