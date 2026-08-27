@@ -16,7 +16,8 @@ TypeScript implementation of the AlgoChat protocol for encrypted messaging on Al
 - **PSK Mode (v1.1)** - Hybrid ECDH + pre-shared key ratcheting for quantum defense-in-depth
 - **Bidirectional Decryption** - Sender can decrypt own messages
 - **Reply Support** - Thread conversations with context
-- **Minimal Dependencies** - Uses @noble crypto libraries (audited) + algosdk
+- **Minimal Dependencies** - Uses @noble crypto libraries (audited) + algosdk 3.7 + falcon-1024
+- **Falcon-1024 accounts** - New identities sign with `pqsig` by default. Import without a scheme still recovers Ed25519
 - **TypeScript First** - Full type safety
 
 ## Security Properties
@@ -28,6 +29,7 @@ TypeScript implementation of the AlgoChat protocol for encrypted messaging on Al
 | Forward secrecy | Protected (ephemeral keys per message) |
 | Replay attacks | Protected (blockchain uniqueness + PSK counter) |
 | Quantum resistance (key exchange) | Optional (PSK mode provides defense-in-depth) |
+| Quantum resistance (account identity) | Optional (Falcon-1024 `pqsig` on new accounts) |
 | PSK session forward secrecy | Optional (100-message session boundaries in PSK mode) |
 | Metadata privacy | **Not protected** (addresses, timing visible) |
 | Traffic analysis | **Not protected** |
@@ -51,6 +53,7 @@ pnpm add @corvidlabs/ts-algochat
 import {
     AlgorandService,
     createChatAccountFromMnemonic,
+    createRandomChatAccount,
 } from '@corvidlabs/ts-algochat';
 
 // Initialize service
@@ -61,8 +64,14 @@ const service = new AlgorandService({
     indexerServer: 'https://testnet-idx.algonode.cloud',
 });
 
-// Create account from mnemonic
-const account = createChatAccountFromMnemonic('your 25 word mnemonic...');
+// Create a new Falcon-1024 account (default)
+const { account, mnemonic } = createRandomChatAccount();
+
+// Import a classical 25-word phrase (Ed25519 address, same as Pera / v1.1)
+const imported = createChatAccountFromMnemonic('your 25 word mnemonic...');
+
+// Recover a Falcon account generated from the same words
+const falcon = createChatAccountFromMnemonic(mnemonic, { scheme: 'falcon-1024' });
 
 // Discover recipient's encryption key
 const recipientKey = await service.discoverPublicKey('RECIPIENT_ADDRESS');
@@ -86,13 +95,14 @@ const messages = await service.fetchMessages(account, 'RECIPIENT_ADDRESS');
 ### Account Management
 
 ```typescript
-// Create from mnemonic
+// Create from mnemonic (Ed25519 unless scheme is passed)
 const account = createChatAccountFromMnemonic('word1 word2 ...');
 
-// Generate new account
-const newAccount = createRandomChatAccount();
-console.log('Address:', newAccount.address);
-console.log('Mnemonic:', newAccount.mnemonic);
+// Generate a new Falcon-1024 account
+const generated = createRandomChatAccount();
+console.log('Address:', generated.account.address);
+console.log('Scheme:', generated.account.scheme);
+console.log('Mnemonic:', generated.mnemonic);
 
 // Validate mnemonic
 if (validateMnemonic('word1 word2 ...')) {
@@ -167,10 +177,11 @@ const content = decryptMessage(decoded, myPrivateKey, myPublicKey);
 ```typescript
 interface ChatAccount {
     address: string;
-    publicKey: Uint8Array;
-    privateKey: Uint8Array;
+    scheme: 'ed25519' | 'falcon-1024';
+    account?: algosdk.Account; // Ed25519 only
     encryptionKeys: X25519KeyPair;
-    mnemonic?: string;
+    ed25519PublicKey: Uint8Array;
+    txnSigner: algosdk.TransactionSigner;
 }
 
 interface Message {
@@ -194,7 +205,7 @@ interface Conversation {
 
 ## Protocol
 
-This library implements the [AlgoChat Protocol v1](https://github.com/CorvidLabs/protocol-algochat) and the PSK v1.1 extension.
+This library implements the [AlgoChat Protocol v1.2](https://github.com/CorvidLabs/protocol-algochat) (account agility) and the PSK v1.1 extension. Envelope bytes for `0x01` / `0x02` are unchanged. Falcon identity does not make X25519 key exchange quantum-safe.
 
 ### Wire Format (v1.0 Standard)
 

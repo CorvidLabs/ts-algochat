@@ -25,10 +25,11 @@ Acceptance Criteria
 
 ### REQ-algochat-003
 
-Encryption-key announcements SHALL bind an Algorand signing identity to an X25519 public key with Ed25519 signatures.
+Encryption-key announcements MAY bind an Ed25519 signing identity to an X25519 public key with Ed25519 signatures. Falcon-1024 senders bind identity through the payment `pqsig` instead.
 
 Acceptance Criteria
-- Signature round trips pass and wrong messages, wrong keys, mutations, and invalid key sizes fail.
+- Signature round trips pass and wrong messages, wrong keys, mutations, and invalid key sizes fail for the Ed25519 helper.
+- Falcon ChatAccounts still publish and discover X25519 keys via the existing envelope `sender_pubkey` path.
 
 ### REQ-algochat-004
 
@@ -78,6 +79,17 @@ Acceptance Criteria
 
 Acceptance Criteria
 - Service tests use deterministic mocks to verify send, reply, discovery, fetch, and failure propagation without live network mutation.
+
+### REQ-algochat-024
+
+New ChatAccounts SHALL default to Falcon-1024 authorization. Importing a mnemonic without a scheme SHALL recover the Ed25519 account. Encryption keys SHALL be derived from 32-byte mnemonic entropy for both schemes.
+
+Acceptance Criteria
+- `createRandomChatAccount()` returns `scheme: 'falcon-1024'` and a working `txnSigner`.
+- `createChatAccountFromMnemonic(mn)` returns `scheme: 'ed25519'` and the classical address.
+- `createChatAccountFromMnemonic(mn, { scheme: 'falcon-1024' })` recovers the Falcon address from a Falcon-generated mnemonic.
+- The same mnemonic yields identical X25519 keys and different addresses across schemes.
+- Falcon payments use at least `minFee * 3`.
 
 ### REQ-algochat-011
 

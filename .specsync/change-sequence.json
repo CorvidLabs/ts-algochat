@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "sequence": 2,
-  "id": "CHG-0002-replace-the-incomplete-no-spec-rationale-with-a-stable-full-library-algochat-con",
+  "sequence": 6,
+  "id": "CHG-0006-add-an-opt-in-mailboxroutertransport-speaking-the-raven-mailbox-protocol-per-co",
   "acknowledged_collisions": []
 }

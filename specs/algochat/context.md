@@ -13,3 +13,6 @@ AlgoChat applications need one interoperable TypeScript package for account mate
 - Keep the wire format compact enough for Algorand note limits.
 - Treat public-chain metadata exposure as an explicit limitation, not a security property.
 - Keep clients and storage interfaces injectable for offline deterministic tests.
+- Sign payments through `ChatAccount.txnSigner` so Falcon-1024 `pqsig` and Ed25519 `sig` share one send path.
+- Derive X25519 keys from mnemonic entropy, never from a Falcon secret-key prefix.
+- Default new accounts to Falcon-1024; keep mnemonic import Ed25519 unless the caller passes a scheme.
