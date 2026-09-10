@@ -1,72 +1,7 @@
----
-module: algochat
-version: 6
-status: stable
-files:
-  - src/index.ts
-  - src/blockchain/discovery.test.ts
-  - src/blockchain/discovery.ts
-  - src/blockchain/index.ts
-  - src/blockchain/interfaces.ts
-  - src/blockchain/message-indexer.test.ts
-  - src/blockchain/message-indexer.ts
-  - src/blockchain/message-transaction.ts
-  - src/blockchain/types.ts
-  - src/cache/MessageCache.ts
-  - src/cache/PublicKeyCache.test.ts
-  - src/cache/PublicKeyCache.ts
-  - src/cache/index.ts
-  - src/crypto/encryption.test.ts
-  - src/crypto/encryption.ts
-  - src/crypto/envelope.ts
-  - src/crypto/index.ts
-  - src/crypto/keys.ts
-  - src/crypto/signature.test.ts
-  - src/crypto/signature.ts
-  - src/errors/ChatError.ts
-  - src/errors/index.ts
-  - src/models/Conversation.test.ts
-  - src/models/Conversation.ts
-  - src/models/index.ts
-  - src/models/pending-message.ts
-  - src/models/types.ts
-  - src/psk/encryption.ts
-  - src/psk/envelope.ts
-  - src/psk/exchange.ts
-  - src/psk/index.ts
-  - src/psk/psk.test.ts
-  - src/psk/ratchet.ts
-  - src/psk/state.ts
-  - src/psk/types.ts
-  - src/queue/SendQueue.test.ts
-  - src/queue/SendQueue.ts
-  - src/queue/SyncManager.ts
-  - src/queue/file-send-queue-storage.ts
-  - src/queue/index.ts
-  - src/services/MessageIndexer.ts
-  - src/services/algorand.service.test.ts
-  - src/services/algorand.service.ts
-  - src/services/index.ts
-  - src/services/mnemonic.service.test.ts
-  - src/services/mnemonic.service.ts
-  - src/storage/encryption-key-storage.ts
-  - src/storage/file-key-storage.errors.ts
-  - src/storage/file-key-storage.ts
-  - src/storage/index.ts
-  - src/storage/message-cache.ts
-  - src/storage/public-key-cache.ts
+## MODIFIED
 
-db_tables: []
-depends_on: []
----
+### SPEC SECTION Public API
 
-# TypeScript AlgoChat
-
-## Purpose
-
-Provides the TypeScript implementation of the AlgoChat encrypted-messaging protocol on Algorand. The package derives and exchanges encryption keys, encodes standard and pre-shared-key envelopes, submits and indexes note transactions, models conversations, and supplies durable queue, cache, and key-storage abstractions without concealing blockchain metadata.
-
-## Public API
 
 | Export | Contract |
 |---|---|
@@ -240,69 +175,18 @@ Provides the TypeScript implementation of the AlgoChat encrypted-messaging proto
 | `InvalidCounterError` | Typed failure or stable error classification for the named operation. |
 | `MailboxEnvelopeError` | Typed failure or stable error classification for the named operation. |
 | `MailboxFanoutLimitError` | Typed failure or stable error classification for the named operation. |
+## ADDED
 
-## Invariants
+### REQUIREMENT REQ-algochat-025
 
-1. Standard messages use a fresh ephemeral X25519 key and ChaCha20-Poly1305 authenticated encryption; decryption supports both recipient and sender key paths.
-2. Binary decoders reject unsupported versions, protocols, truncated fields, malformed lengths, and unauthenticated ciphertext rather than returning partial content.
-3. Key announcements are accepted only when their address, signing key, encryption key, and signature agree.
-4. PSK mode combines ECDH material with a ratcheted PSK, derives a new position key per counter, and rejects replayed or unreasonably far-ahead counters.
-5. A message transaction is a minimum-payment transfer whose note fits the Algorand 1,024-byte limit; oversize payloads fail before submission.
-6. Indexed history is filtered to the participants, decoded defensively, de-duplicated, and returned in chronological order.
-7. Queue transitions are explicit and retry counts are bounded; successful removal occurs only after delivery succeeds.
-8. File-backed secrets and queue state use authenticated encryption or atomic replacement and never silently substitute corrupt persisted data.
-9. Network clients remain injectable so protocol behavior can be verified without live Algorand mutation.
-10. The package does not claim metadata privacy: account addresses, transaction timing, and on-chain activity remain observable.
-11. Encryption keys are derived from 32-byte mnemonic entropy for every scheme. `createRandomChatAccount()` defaults to Falcon-1024 `pqsig`. `createChatAccountFromMnemonic` without a scheme recovers Ed25519. The same mnemonic yields identical X25519 keys and different addresses across schemes. Falcon payments use at least `minFee * FALCON_FEE_MULTIPLIER` (3).
+Mailbox put envelopes SHALL be transmitted as ARC-4 dynamic byte arrays — `uint16_be(length) ‖ bytes` — for both single puts and fan-out legs, and the encoder SHALL reject payloads longer than 65535 bytes with a typed error.
 
-## Behavioral Examples
+Acceptance Criteria
+- Unit tests verify the big-endian uint16 length prefix and verbatim payload passthrough, and stub-algod tests confirm put and fan-out app args carry the ARC-4-encoded envelope while static `byte[32]` args remain raw.
 
-```
-Given a sender account, recipient encryption key, and plaintext
-When AlgorandService sends a standard message
-Then it encrypts an authenticated envelope, embeds it in a valid note transaction, submits it, and returns the transaction identifier
-```
+### REQUIREMENT REQ-algochat-026
 
-```
-Given a PSK state that has already accepted a counter
-When the same counter is received again
-Then replay validation rejects it without advancing the receive state
-```
+Mailbox burn and reclaim SHALL include the depositor address — parsed from the mailbox box header — in the foreign accounts array so the contract's inner MBR refund succeeds, and SHALL omit foreign accounts when the mailbox box is absent (idempotent burn).
 
-```
-Given queued messages and restored connectivity
-When SyncManager starts synchronization
-Then SendQueue processes eligible entries in order, records failures for retry, and removes only successful entries
-```
-
-## Error Cases
-
-| Error | Condition | Behavior |
-|---|---|---|
-| `EncryptionError` / `EnvelopeError` | Invalid key material, ciphertext, version, protocol, or binary layout | Reject encryption/decryption or decoding with a typed error |
-| `PSKEncryptionError` / `PSKEnvelopeError` | Invalid PSK, counter, authentication tag, or PSK envelope | Reject without emitting plaintext or changing replay state |
-| `SignatureError` | Wrong Ed25519/X25519 key size or invalid announcement signature | Reject key publication or discovery |
-| `MessageTooLargeError` | Encoded note exceeds 1,024 bytes | Do not construct or submit the transaction |
-| `PublicKeyNotFoundError` | No valid announcement is found within the configured search | Return an explicit discovery failure |
-| Storage errors | Password absent, decryption fails, data is invalid, or key is missing | Preserve existing storage and report the distinct cause |
-| `ChatError` | Public service or protocol operation fails | Preserve a stable `ChatErrorCode`, message, cause, and optional context |
-
-## Dependencies
-
-- `algosdk` ≥ 3.7.0 for Algorand accounts, `pqsig`, encoding, and clients.
-- `falcon-1024` for deterministic Falcon-1024 keygen and compressed signatures.
-- `@noble/curves`, `@noble/ciphers`, and `@noble/hashes` for X25519, Ed25519, ChaCha20-Poly1305, HKDF, and hashes.
-- Bun for the deterministic TypeScript test suite and TypeScript for declaration/build validation.
-
-## Change Log
-
-| Version | Date | Changes |
-|---|---|---|
-| 1 | 2026-07-13 | Adopted SpecSync 5 and Trust 1 governance without a canonical product specification |
-| 2 | 2026-07-14 | Added the stable full-library contract for the existing implementation and tests |
-| 3 | 2026-07-14 | CHG-0002-replace-the-incomplete-no-spec-rationale-with-a-stable-full-library-algochat-con: Replace the incomplete no-spec rationale with a stable full-library AlgoChat contract covering every existing source, export, invariant, failure mode, and native test boundary |
-| 2026-07-19 | CHG-0006-add-an-opt-in-mailboxroutertransport-speaking-the-raven-mailbox-protocol-per-co: Add an opt-in MailboxRouterTransport speaking the raven mailbox protocol: per-counter key derivation, MBR-exact put groups, atomic N-recipient fan-out, burn/reclaim/status, off-chain box reads, gated behind service config |
-| 5 | 2026-08-27 | Default new ChatAccounts to Falcon-1024 `pqsig`; mnemonic import without a scheme stays Ed25519; encryption seed is mnemonic entropy; Falcon min fee is 3× |
-| 5 | 2026-08-27 | CHG-0007-falcon-default-chataccounts: Default new ChatAccounts to Falcon-1024 pqsig while mnemonic import stays Ed25519 |
-| 6 | 2026-07-23 | Fix MailboxRouterTransport for real algod: ARC-4-encode put envelopes; include depositor in burn/reclaim foreign accounts for inner refunds |
-| 6 | 2026-07-23 | CHG-0007-fix-mailboxroutertransport-for-real-algod-arc-4-encode-put-envelopes-include-d: Fix MailboxRouterTransport for real algod: ARC-4-encode put envelopes; include depositor in burn/reclaim foreign accounts for inner refunds |
+Acceptance Criteria
+- Stub-algod tests verify burn includes the depositor for an existing mailbox, omits foreign accounts for an absent mailbox, and reclaim includes the depositor.

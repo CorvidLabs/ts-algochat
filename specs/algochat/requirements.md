@@ -191,3 +191,17 @@ The mailbox transport SHALL be strictly opt-in — exposed by `AlgorandService` 
 Acceptance Criteria
 - Service tests with a stubbed algod client verify single put, atomic fan-out put, burn, and reclaim group shapes with correct ABI selectors, arguments, and box references; off-chain box reads returning depositor, write round, and envelope; and that the transport is absent unless configured.
 
+### REQ-algochat-025
+
+Mailbox put envelopes SHALL be transmitted as ARC-4 dynamic byte arrays — `uint16_be(length) ‖ bytes` — for both single puts and fan-out legs, and the encoder SHALL reject payloads longer than 65535 bytes with a typed error.
+
+Acceptance Criteria
+- Unit tests verify the big-endian uint16 length prefix and verbatim payload passthrough, and stub-algod tests confirm put and fan-out app args carry the ARC-4-encoded envelope while static `byte[32]` args remain raw.
+
+### REQ-algochat-026
+
+Mailbox burn and reclaim SHALL include the depositor address — parsed from the mailbox box header — in the foreign accounts array so the contract's inner MBR refund succeeds, and SHALL omit foreign accounts when the mailbox box is absent (idempotent burn).
+
+Acceptance Criteria
+- Stub-algod tests verify burn includes the depositor for an existing mailbox, omits foreign accounts for an absent mailbox, and reclaim includes the depositor.
+

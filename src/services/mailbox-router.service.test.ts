@@ -15,6 +15,7 @@ import {
     MAILBOX_MAX_ENVELOPE_SIZE,
     MailboxError,
     MailboxFanoutLimitError,
+    arc4EncodeDynamicBytes,
     mailboxMbr,
     mailboxMethodSelector,
     planMailboxPut,
@@ -124,7 +125,7 @@ describe('MailboxRouterTransport.send', () => {
         expect(args.length).toBe(3);
         expect(Buffer.from(args[0]).equals(Buffer.from(PUT_SELECTOR))).toBe(true);
         expect(Buffer.from(args[1]).equals(Buffer.from(expected.mailboxId))).toBe(true);
-        expect(Buffer.from(args[2]).equals(Buffer.from(envelope))).toBe(true);
+        expect(Buffer.from(args[2]).equals(Buffer.from(arc4EncodeDynamicBytes(envelope)))).toBe(true);
 
         const boxes = call.applicationCall?.boxes ?? [];
         expect(boxes.length).toBe(1);
@@ -177,7 +178,7 @@ describe('MailboxRouterTransport.sendFanout', () => {
             const args = call.applicationCall?.appArgs ?? [];
             expect(Buffer.from(args[0]).equals(Buffer.from(PUT_SELECTOR))).toBe(true);
             expect(Buffer.from(args[1]).equals(Buffer.from(plan.mailboxId))).toBe(true);
-            expect(Buffer.from(args[2]).equals(Buffer.from(legs[i].envelope))).toBe(true);
+            expect(Buffer.from(args[2]).equals(Buffer.from(arc4EncodeDynamicBytes(legs[i].envelope)))).toBe(true);
         }
         // distinct recipients, distinct mailboxes
         const ids = result.legs.map((leg) => Buffer.from(leg.mailboxId).toString('hex'));
@@ -199,12 +200,20 @@ describe('MailboxRouterTransport.sendFanout', () => {
 });
 
 describe('MailboxRouterTransport burn and reclaim', () => {
-    test('burn submits the proof with the mailbox box reference', async () => {
+    test('burn submits the proof with the mailbox box reference and depositor account', async () => {
         const account = algosdk.generateAccount();
+        const depositor = algosdk.generateAccount();
         const stub = makeStubAlgod();
         const transport = makeTransport(stub);
 
         const plan = planMailboxPut(new Uint8Array(32).fill(7), 4, new Uint8Array(64).fill(1));
+        const header = new Uint8Array(40);
+        header.set(algosdk.decodeAddress(depositor.addr.toString()).publicKey, 0);
+        new DataView(header.buffer).setBigUint64(32, 100n, false);
+        const value = new Uint8Array(40 + 64);
+        value.set(header, 0);
+        stub.boxes.set(Buffer.from(plan.mailboxId).toString('hex'), value);
+
         const msgKey = new Uint8Array(32).fill(11);
         const result = await transport.burn(account, plan.mailboxId, msgKey);
         expect(result.confirmedRound).toBe(101);
@@ -217,6 +226,18 @@ describe('MailboxRouterTransport burn and reclaim', () => {
         expect(Buffer.from(args[1]).equals(Buffer.from(plan.mailboxId))).toBe(true);
         expect(Buffer.from(args[2]).equals(Buffer.from(msgKey))).toBe(true);
         expect(Buffer.from((call.applicationCall?.boxes ?? [])[0].name).equals(Buffer.from(plan.mailboxId))).toBe(true);
+        const foreign = (call.applicationCall?.accounts ?? []).map((entry) => entry.toString());
+        expect(foreign).toContain(depositor.addr.toString());
+    });
+
+    test('burn omits foreign accounts when the mailbox is already absent', async () => {
+        const account = algosdk.generateAccount();
+        const stub = makeStubAlgod();
+        const transport = makeTransport(stub);
+        const mailboxId = new Uint8Array(32).fill(9);
+        await transport.burn(account, mailboxId, new Uint8Array(32).fill(11));
+        const [call] = decodeGroup(stub.captured[0]);
+        expect(call.applicationCall?.accounts ?? []).toHaveLength(0);
     });
 
     test('reclaim submits depositor-only call with the mailbox box reference', async () => {
@@ -225,6 +246,11 @@ describe('MailboxRouterTransport burn and reclaim', () => {
         const transport = makeTransport(stub);
 
         const mailboxId = new Uint8Array(32).fill(21);
+        const header = new Uint8Array(40);
+        header.set(algosdk.decodeAddress(account.addr.toString()).publicKey, 0);
+        new DataView(header.buffer).setBigUint64(32, 100n, false);
+        stub.boxes.set(Buffer.from(mailboxId).toString('hex'), header);
+
         await transport.reclaim(account, mailboxId);
 
         const [call] = decodeGroup(stub.captured[0]);
@@ -233,6 +259,8 @@ describe('MailboxRouterTransport burn and reclaim', () => {
         expect(Buffer.from(args[0]).equals(Buffer.from(RECLAIM_SELECTOR))).toBe(true);
         expect(Buffer.from(args[1]).equals(Buffer.from(mailboxId))).toBe(true);
         expect(Buffer.from((call.applicationCall?.boxes ?? [])[0].name).equals(Buffer.from(mailboxId))).toBe(true);
+        const foreign = (call.applicationCall?.accounts ?? []).map((entry) => entry.toString());
+        expect(foreign).toContain(account.addr.toString());
     });
 });
 

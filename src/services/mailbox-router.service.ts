@@ -22,6 +22,7 @@ import algosdk from 'algosdk';
 import {
     MAILBOX_HEADER_SIZE,
     MAILBOX_METHODS,
+    arc4EncodeDynamicBytes,
     mailboxMethodSelector,
     planMailboxFanout,
     planMailboxPut,
@@ -169,6 +170,9 @@ export class MailboxRouterTransport {
         msgKey: Uint8Array,
         options: MailboxSubmitOptions = {}
     ): Promise<MailboxTxnResult> {
+        // Inner refund pays the depositor from the box header; AVM requires
+        // that address in the foreign accounts array (unless it is Txn.Sender).
+        const accounts = await this.foreignAccountsForRefund(mailboxId);
         const call = algosdk.makeApplicationCallTxnFromObject({
             sender: account.addr,
             appIndex: this.appId,
@@ -176,6 +180,7 @@ export class MailboxRouterTransport {
             appArgs: [BURN_SELECTOR, mailboxId, msgKey],
             boxes: [{ appIndex: 0, name: mailboxId }],
             suggestedParams: await this.algodClient.getTransactionParams().do(),
+            ...(accounts ? { accounts } : {}),
         });
         return this.signAndSubmit(account, [call], options.waitRounds ?? DEFAULT_WAIT_ROUNDS);
     }
@@ -193,6 +198,7 @@ export class MailboxRouterTransport {
         mailboxId: Uint8Array,
         options: MailboxSubmitOptions = {}
     ): Promise<MailboxTxnResult> {
+        const accounts = await this.foreignAccountsForRefund(mailboxId);
         const call = algosdk.makeApplicationCallTxnFromObject({
             sender: account.addr,
             appIndex: this.appId,
@@ -200,6 +206,7 @@ export class MailboxRouterTransport {
             appArgs: [RECLAIM_SELECTOR, mailboxId],
             boxes: [{ appIndex: 0, name: mailboxId }],
             suggestedParams: await this.algodClient.getTransactionParams().do(),
+            ...(accounts ? { accounts } : {}),
         });
         return this.signAndSubmit(account, [call], options.waitRounds ?? DEFAULT_WAIT_ROUNDS);
     }
@@ -252,13 +259,26 @@ export class MailboxRouterTransport {
                     sender: account.addr,
                     appIndex: this.appId,
                     onComplete: algosdk.OnApplicationComplete.NoOpOC,
-                    appArgs: [PUT_SELECTOR, plan.mailboxId, plan.envelope],
+                    // ARC-4 dynamic byte[]: uint16_be(len) ‖ envelope
+                    appArgs: [PUT_SELECTOR, plan.mailboxId, arc4EncodeDynamicBytes(plan.envelope)],
                     boxes: [{ appIndex: 0, name: plan.mailboxId }],
                     suggestedParams: params,
                 })
             );
         }
         return this.signAndSubmit(account, txns, waitRounds);
+    }
+
+    /**
+     * Resolves foreign accounts needed for an inner MBR refund. Absent boxes
+     * (idempotent burn) need no accounts.
+     */
+    private async foreignAccountsForRefund(mailboxId: Uint8Array): Promise<string[] | undefined> {
+        const current = await this.read(mailboxId);
+        if (!current.exists || !current.depositor) {
+            return undefined;
+        }
+        return [current.depositor];
     }
 
     /**

@@ -226,6 +226,7 @@ export {
     planMailboxPut,
     planMailboxFanout,
     mailboxMethodSelector,
+    arc4EncodeDynamicBytes,
     type MailboxLeg,
     type MailboxLegPlan,
 } from './blockchain/mailbox.js';

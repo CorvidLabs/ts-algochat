@@ -1,0 +1,19 @@
+{
+  "timestamp": 1784816591,
+  "commit": "63432d0f56abc1d8641867940f9e0d062da7bf6d",
+  "contract_digest": "a32bd58be419b336be43fda605edf89dd564954802fdcc85c5154f0f3d1a6697",
+  "workspace_digest": "92588df3d2e2d306d5ee6f3c7156211aa66c3d9398601ae939511cd7f57c9f15",
+  "acceptance_input_digest": "ecb7ff691f90ad82b2b6dd96bb13bb2bac04192af3f3585b4b925da859746844",
+  "passed": true,
+  "commands": [
+    {
+      "command": "fledge lanes run verify",
+      "success": true,
+      "exit_code": 0
+    }
+  ],
+  "requirement_ids": [
+    "REQ-algochat-025",
+    "REQ-algochat-026"
+  ]
+}

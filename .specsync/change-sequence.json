@@ -2,5 +2,13 @@
     "schema_version": 1,
     "sequence": 7,
     "id": "CHG-0007-falcon-default-chataccounts",
-    "acknowledged_collisions": []
+    "acknowledged_collisions": [
+        {
+            "sequence": 7,
+            "ids": [
+                "CHG-0007-falcon-default-chataccounts",
+                "CHG-0007-fix-mailboxroutertransport-for-real-algod-arc-4-encode-put-envelopes-include-d"
+            ]
+        }
+    ]
 }

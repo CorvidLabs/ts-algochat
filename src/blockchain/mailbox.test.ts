@@ -25,6 +25,7 @@ import {
     InvalidViewSecretError,
     deriveMailboxId,
     deriveMsgKey,
+    arc4EncodeDynamicBytes,
     mailboxMbr,
     mailboxMethodSelector,
     planMailboxFanout,
@@ -168,6 +169,17 @@ describe('mailbox put planning', () => {
         expect(planMailboxFanout(Array.from({ length: MAILBOX_MAX_FANOUT_LEGS }, leg)).length).toBe(8);
         expect(() => planMailboxFanout([])).toThrow(MailboxFanoutLimitError);
         expect(() => planMailboxFanout(Array.from({ length: 9 }, leg))).toThrow(MailboxFanoutLimitError);
+    });
+});
+
+describe('ARC-4 encoding', () => {
+    test('arc4EncodeDynamicBytes prefixes a big-endian uint16 length', () => {
+        const payload = new Uint8Array([1, 2, 3, 4]);
+        const encoded = arc4EncodeDynamicBytes(payload);
+        expect(encoded.length).toBe(6);
+        expect(encoded[0]).toBe(0);
+        expect(encoded[1]).toBe(4);
+        expect(Buffer.from(encoded.subarray(2)).equals(Buffer.from(payload))).toBe(true);
     });
 });
 
