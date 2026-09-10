@@ -6,7 +6,7 @@
  */
 
 import { describe, test, expect } from 'bun:test';
-import { AlgorandService, type AlgorandConfig } from './algorand.service.js';
+import { AlgorandService, FALCON_FEE_MULTIPLIER, type AlgorandConfig } from './algorand.service.js';
 import { createRandomChatAccount } from './mnemonic.service.js';
 import { encryptMessage, encodeEnvelope } from '../crypto/index.js';
 
@@ -98,18 +98,23 @@ describe('AlgorandService', () => {
         test('ChatAccount has required fields', () => {
             const { account: chatAccount } = createRandomChatAccount();
 
-            // Type check - these should all be defined
             expect(chatAccount.address).toBeDefined();
-            expect(chatAccount.account).toBeDefined();
+            expect(chatAccount.scheme).toBe('falcon-1024');
+            expect(chatAccount.txnSigner).toBeTypeOf('function');
             expect(chatAccount.encryptionKeys).toBeDefined();
             expect(chatAccount.encryptionKeys.publicKey).toBeDefined();
             expect(chatAccount.encryptionKeys.privateKey).toBeDefined();
         });
 
-        test('ChatAccount address matches algosdk account', () => {
-            const { account: chatAccount } = createRandomChatAccount();
+        test('Ed25519 ChatAccount address matches algosdk account', () => {
+            const { account: chatAccount } = createRandomChatAccount({ scheme: 'ed25519' });
 
-            expect(chatAccount.address).toBe(chatAccount.account.addr.toString());
+            expect(chatAccount.account).toBeDefined();
+            expect(chatAccount.address).toBe(chatAccount.account!.addr.toString());
+        });
+
+        test('Falcon fee multiplier is 3', () => {
+            expect(FALCON_FEE_MULTIPLIER).toBe(3);
         });
     });
 

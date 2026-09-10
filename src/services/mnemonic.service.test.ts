@@ -5,6 +5,7 @@
 import { describe, test, expect } from 'bun:test';
 import algosdk from 'algosdk';
 import {
+    SIGNING_SCHEME,
     createChatAccountFromMnemonic,
     createRandomChatAccount,
     validateMnemonic,
@@ -35,12 +36,14 @@ describe('MnemonicService', () => {
             expect(chatAccount.encryptionKeys.privateKey.length).toBe(32);
         });
 
-        test('creates account with algosdk Account', () => {
+        test('import without a scheme is Ed25519', () => {
             const chatAccount = createChatAccountFromMnemonic(TEST_MNEMONIC);
 
+            expect(chatAccount.scheme).toBe(SIGNING_SCHEME.ED25519);
             expect(chatAccount.account).toBeDefined();
-            expect(chatAccount.account.sk).toBeDefined();
-            expect(chatAccount.account.sk.length).toBe(64); // Ed25519 secret key
+            expect(chatAccount.account?.sk).toBeDefined();
+            expect(chatAccount.account?.sk.length).toBe(64);
+            expect(chatAccount.txnSigner).toBeTypeOf('function');
         });
 
         test('same mnemonic produces same keys', () => {
@@ -127,19 +130,53 @@ describe('MnemonicService', () => {
             expect(account.ed25519PublicKey.length).toBe(32);
         });
 
-        test('mnemonic can recreate same account', () => {
+        test('defaults to Falcon-1024', () => {
+            const { account } = createRandomChatAccount();
+
+            expect(account.scheme).toBe(SIGNING_SCHEME.FALCON_1024);
+            expect(account.account).toBeUndefined();
+            expect(account.txnSigner).toBeTypeOf('function');
+        });
+
+        test('mnemonic recreates the Falcon account when scheme is passed', () => {
             const { account: original, mnemonic } = createRandomChatAccount();
-            const recreated = createChatAccountFromMnemonic(mnemonic);
+            const recreated = createChatAccountFromMnemonic(mnemonic, {
+                scheme: SIGNING_SCHEME.FALCON_1024,
+            });
 
             expect(recreated.address).toBe(original.address);
+            expect(recreated.scheme).toBe(SIGNING_SCHEME.FALCON_1024);
             expect(uint8ArrayEquals(recreated.encryptionKeys.publicKey, original.encryptionKeys.publicKey)).toBe(true);
+        });
+
+        test('import without a scheme does not recover a Falcon address', () => {
+            const { account: original, mnemonic } = createRandomChatAccount();
+            const classical = createChatAccountFromMnemonic(mnemonic);
+
+            expect(classical.scheme).toBe(SIGNING_SCHEME.ED25519);
+            expect(classical.address).not.toBe(original.address);
         });
 
         test('mnemonic can recreate same ed25519PublicKey', () => {
             const { account: original, mnemonic } = createRandomChatAccount();
-            const recreated = createChatAccountFromMnemonic(mnemonic);
+            const recreated = createChatAccountFromMnemonic(mnemonic, {
+                scheme: SIGNING_SCHEME.FALCON_1024,
+            });
 
             expect(uint8ArrayEquals(recreated.ed25519PublicKey, original.ed25519PublicKey)).toBe(true);
+        });
+
+        test('same mnemonic yields same encryption keys across schemes and different addresses', () => {
+            const { mnemonic } = createRandomChatAccount({ scheme: SIGNING_SCHEME.ED25519 });
+            const ed = createChatAccountFromMnemonic(mnemonic);
+            const falcon = createChatAccountFromMnemonic(mnemonic, {
+                scheme: SIGNING_SCHEME.FALCON_1024,
+            });
+
+            expect(ed.address).not.toBe(falcon.address);
+            expect(uint8ArrayEquals(ed.encryptionKeys.publicKey, falcon.encryptionKeys.publicKey)).toBe(true);
+            expect(uint8ArrayEquals(ed.encryptionKeys.privateKey, falcon.encryptionKeys.privateKey)).toBe(true);
+            expect(uint8ArrayEquals(ed.ed25519PublicKey, falcon.ed25519PublicKey)).toBe(true);
         });
 
         test('generates unique accounts each time', () => {

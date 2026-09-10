@@ -9,6 +9,10 @@ import type { Message, Conversation, SendResult, SendOptions, X25519KeyPair, Dis
 import { encryptMessage, encryptReply, decryptMessage, encodeEnvelope, decodeEnvelope, isChatMessage } from '../crypto/index.js';
 import { ChatError } from '../errors/ChatError.js';
 import { MailboxRouterTransport } from './mailbox-router.service.js';
+import { SIGNING_SCHEME, type SigningScheme } from './mnemonic.service.js';
+
+/** Falcon-1024 minimum fee is base + 2× scheme contribution = 3× minFee. */
+export const FALCON_FEE_MULTIPLIER = 3;
 
 export interface AlgorandConfig {
     algodToken: string;
@@ -27,12 +31,21 @@ export interface AlgorandConfig {
 
 export interface ChatAccount {
     address: string;
-    account: algosdk.Account;
+    /** Authorizing signature scheme for payments that carry envelopes. */
+    scheme: SigningScheme;
+    /**
+     * Ed25519 algosdk account. Present only when `scheme` is `ed25519`.
+     * Falcon accounts sign through `txnSigner` and do not expose a 64-byte sk.
+     */
+    account?: algosdk.Account;
     encryptionKeys: X25519KeyPair;
-    /** The Ed25519 public key for this account (32 bytes), derived from the
-     *  account's seed/private key (and equivalent to the key encoded in the
-     *  Algorand address). Used for signature verification. */
+    /**
+     * Ed25519 public key derived from mnemonic entropy (32 bytes).
+     * Equal to the address public key only when `scheme` is `ed25519`.
+     */
     ed25519PublicKey: Uint8Array;
+    /** Signs payments for this account (Ed25519 `sig` or Falcon-1024 `pqsig`). */
+    txnSigner: algosdk.TransactionSigner;
 }
 
 /** Indexer transaction response shape (subset of fields we use) */
@@ -101,6 +114,34 @@ export class AlgorandService {
     }
 
     /**
+     * Raises Falcon-1024 payments to 3× minFee. Ed25519 params pass through.
+     */
+    private suggestedParamsFor(
+        chatAccount: ChatAccount,
+        params: algosdk.SuggestedParams
+    ): algosdk.SuggestedParams {
+        if (chatAccount.scheme !== SIGNING_SCHEME.FALCON_1024) {
+            return params;
+        }
+        const minFee = Number(params.minFee);
+        const fee = Number(params.fee);
+        return {
+            ...params,
+            flatFee: true,
+            fee: Math.max(fee, minFee * FALCON_FEE_MULTIPLIER),
+        };
+    }
+
+    private async submitSigned(
+        chatAccount: ChatAccount,
+        txn: algosdk.Transaction
+    ): Promise<string> {
+        const [blob] = await chatAccount.txnSigner([txn], [0]);
+        const { txid } = await this.algodClient.sendRawTransaction(blob).do();
+        return txid;
+    }
+
+    /**
      * Sends an encrypted message to a recipient
      *
      * @param chatAccount - The sender's chat account
@@ -128,7 +169,10 @@ export class AlgorandService {
         const note = encodeEnvelope(envelope);
 
         // Get transaction parameters
-        const params = await this.algodClient.getTransactionParams().do();
+        const params = this.suggestedParamsFor(
+            chatAccount,
+            await this.algodClient.getTransactionParams().do()
+        );
 
         // Build payment transaction
         const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
@@ -139,9 +183,7 @@ export class AlgorandService {
             suggestedParams: params,
         });
 
-        // Sign and submit
-        const signedTxn = txn.signTxn(chatAccount.account.sk);
-        const { txid } = await this.algodClient.sendRawTransaction(signedTxn).do();
+        const txid = await this.submitSigned(chatAccount, txn);
 
         // Build optimistic message for UI
         const sentMessage: Message = {
@@ -211,7 +253,10 @@ export class AlgorandService {
         );
 
         const note = encodeEnvelope(envelope);
-        const params = await this.algodClient.getTransactionParams().do();
+        const params = this.suggestedParamsFor(
+            chatAccount,
+            await this.algodClient.getTransactionParams().do()
+        );
 
         const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
             sender: chatAccount.address,
@@ -221,8 +266,7 @@ export class AlgorandService {
             suggestedParams: params,
         });
 
-        const signedTxn = txn.signTxn(chatAccount.account.sk);
-        const { txid } = await this.algodClient.sendRawTransaction(signedTxn).do();
+        const txid = await this.submitSigned(chatAccount, txn);
 
         const replyContext = {
             messageId: replyToTxid,
@@ -520,7 +564,10 @@ export class AlgorandService {
         );
 
         const note = encodeEnvelope(envelope);
-        const params = await this.algodClient.getTransactionParams().do();
+        const params = this.suggestedParamsFor(
+            chatAccount,
+            await this.algodClient.getTransactionParams().do()
+        );
 
         // Zero-amount self-payment
         const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
@@ -531,8 +578,7 @@ export class AlgorandService {
             suggestedParams: params,
         });
 
-        const signedTxn = txn.signTxn(chatAccount.account.sk);
-        const { txid } = await this.algodClient.sendRawTransaction(signedTxn).do();
+        const txid = await this.submitSigned(chatAccount, txn);
 
         return txid;
     }

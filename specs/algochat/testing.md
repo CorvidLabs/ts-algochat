@@ -7,7 +7,7 @@ spec: algochat.spec.md
 ### Native verification
 
 - `bun run tsc` validates every public declaration and implementation under strict TypeScript settings.
-- `bun test` runs the deterministic crypto, signature, discovery, indexer, service, mnemonic, conversation, PSK, cache, and queue suite.
+- `bun test` runs the deterministic crypto, signature, discovery, indexer, service, mnemonic, conversation, PSK, cache, and queue suite, including Falcon vs Ed25519 scheme recovery.
 
 ### Security and compatibility
 

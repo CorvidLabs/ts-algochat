@@ -13,5 +13,5 @@ artifact: testing
 
 ## Requirement evidence map
 
-- `REQ-algochat-024`: `arc4EncodeDynamicBytes` length-prefix tests in `src/blockchain/mailbox.test.ts`; put and fan-out ARC-4 arg assertions in `src/services/mailbox-router.service.test.ts`.
-- `REQ-algochat-025`: burn-with-depositor, burn-absent-mailbox, and reclaim foreign-account cases in `src/services/mailbox-router.service.test.ts`.
+- `REQ-algochat-025`: `arc4EncodeDynamicBytes` length-prefix tests in `src/blockchain/mailbox.test.ts`; put and fan-out ARC-4 arg assertions in `src/services/mailbox-router.service.test.ts`.
+- `REQ-algochat-026`: burn-with-depositor, burn-absent-mailbox, and reclaim foreign-account cases in `src/services/mailbox-router.service.test.ts`.
