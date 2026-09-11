@@ -12,7 +12,7 @@ TypeScript implementation of the AlgoChat protocol for encrypted messaging on Al
 ## Features
 
 - **End-to-End Encryption** - X25519 + ChaCha20-Poly1305
-- **Forward Secrecy** - Per-message ephemeral keys
+- **Per-Message Key Separation** - Fresh ephemeral key pair per message (this is *not* forward secrecy — see [Security Properties](#security-properties))
 - **PSK Mode (v1.1)** - Hybrid ECDH + pre-shared key ratcheting for quantum defense-in-depth
 - **Bidirectional Decryption** - Sender can decrypt own messages
 - **Reply Support** - Thread conversations with context
@@ -26,13 +26,23 @@ TypeScript implementation of the AlgoChat protocol for encrypted messaging on Al
 |----------|--------|
 | Message content confidentiality | Protected (E2EE) |
 | Message integrity | Protected (authenticated encryption) |
-| Forward secrecy | Protected (ephemeral keys per message) |
+| Forward secrecy | **Not provided** — a compromised long-term key or recovery phrase retroactively decrypts that account's entire message history |
 | Replay attacks | Protected (blockchain uniqueness + PSK counter) |
 | Quantum resistance (key exchange) | Optional (PSK mode provides defense-in-depth) |
 | Quantum resistance (account identity) | Optional (Falcon-1024 `pqsig` on new accounts) |
-| PSK session forward secrecy | Optional (100-message session boundaries in PSK mode) |
+| PSK session forward secrecy | **Not provided** — the position-key schedule is deterministic from a static initial PSK, so holding it yields all past and future keys |
 | Metadata privacy | **Not protected** (addresses, timing visible) |
 | Traffic analysis | **Not protected** |
+
+> **On forward secrecy.** Message keys derive as
+> `X25519(recipient_private_key, envelope.ephemeral_public_key)`, and the ephemeral
+> public key is carried in the envelope, which lives permanently and publicly on the
+> Algorand blockchain. Compromise of either party's long-term key — or the recovery
+> phrase behind it — therefore exposes all of that account's past messages, and no
+> rotation can undo it. PSK mode requires the attacker to hold the PSK as well, which
+> is a real additional barrier, but the PSK is static and every position key derives
+> deterministically from it. See
+> [PROTOCOL.md §11.1](https://github.com/CorvidLabs/protocol-algochat/blob/main/PROTOCOL.md#111-forward-secrecy--not-provided).
 
 ## Installation
 
@@ -233,8 +243,8 @@ The PSK (Pre-Shared Key) v1.1 protocol adds an additional layer of authenticatio
 
 ### Features
 
-- **Two-level key ratchet** - Session keys derived per 100 messages, position keys per message
-- **Hybrid encryption** - Combines ECDH forward secrecy with PSK authentication
+- **Two-level key schedule** - Session keys derived per 100 messages, position keys per message (deterministic from the initial PSK, not a forward-secret ratchet)
+- **Hybrid encryption** - Combines the ECDH shared secret with the PSK, so an attacker must obtain both
 - **Replay protection** - Counter-based sliding window prevents message replay
 - **Out-of-band key exchange** - URI scheme for sharing PSK keys (QR code compatible)
 
