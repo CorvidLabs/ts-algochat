@@ -6,9 +6,10 @@
  */
 
 import { describe, test, expect } from 'bun:test';
+import algosdk from 'algosdk';
 import { AlgorandService, FALCON_FEE_MULTIPLIER, type AlgorandConfig } from './algorand.service.js';
-import { createRandomChatAccount } from './mnemonic.service.js';
-import { encryptMessage, encodeEnvelope } from '../crypto/index.js';
+import { SIGNING_SCHEME, createRandomChatAccount } from './mnemonic.service.js';
+import { decryptMessage, encryptMessage, encodeEnvelope, isChatMessage } from '../crypto/index.js';
 
 const TEST_CONFIG: AlgorandConfig = {
     algodToken: 'test-token',
@@ -210,6 +211,167 @@ describe('AlgorandService', () => {
             await expect(service.discoverPublicKey(fakeAddress)).rejects.toThrow(
                 /Public key not found for/
             );
+        });
+    });
+
+    describe('Falcon and Ed25519 send path', () => {
+        function suggestedParams(
+            overrides: Record<string, unknown> = {}
+        ): algosdk.SuggestedParams {
+            return {
+                fee: 1000,
+                minFee: 1000,
+                firstValid: 100,
+                lastValid: 1100,
+                genesisHash: new Uint8Array(32).fill(1),
+                genesisID: 'testnet-v1.0',
+                flatFee: true,
+                ...overrides,
+            } as algosdk.SuggestedParams;
+        }
+
+        function makeStubAlgod(params: algosdk.SuggestedParams = suggestedParams()) {
+            const captured: Uint8Array[] = [];
+            const client = {
+                getTransactionParams: () => ({ do: async () => params }),
+                sendRawTransaction: (signed: Uint8Array | Uint8Array[]) => ({
+                    do: async () => {
+                        const blob = Array.isArray(signed) ? signed[0] : signed;
+                        captured.push(blob);
+                        return { txid: algosdk.decodeSignedTransaction(blob).txn.txID() };
+                    },
+                }),
+            };
+            return { client, captured };
+        }
+
+        function attachAlgod(service: AlgorandService, client: unknown): void {
+            // @ts-expect-error private client injected for offline send tests
+            service.algodClient = client;
+        }
+
+        test('does not expose a mailbox transport', () => {
+            const service = new AlgorandService(TEST_CONFIG);
+            expect(service).not.toHaveProperty('mailbox');
+        });
+
+        test('Falcon sendMessage signs with pqsig and 3× minFee', async () => {
+            const stub = makeStubAlgod();
+            const service = new AlgorandService(TEST_CONFIG);
+            attachAlgod(service, stub.client);
+
+            const sender = createRandomChatAccount().account;
+            const recipient = createRandomChatAccount().account;
+            expect(sender.scheme).toBe(SIGNING_SCHEME.FALCON_1024);
+            expect(sender.account).toBeUndefined();
+
+            const result = await service.sendMessage(
+                sender,
+                recipient.address,
+                recipient.encryptionKeys.publicKey,
+                'hello falcon'
+            );
+
+            expect(result.txid).toBeDefined();
+            expect(result.fee).toBe(3000);
+            expect(stub.captured).toHaveLength(1);
+
+            const signed = algosdk.decodeSignedTransaction(stub.captured[0]);
+            expect(signed.pqsig).toBeDefined();
+            expect(signed.sig).toBeUndefined();
+            expect(Buffer.from(signed.pqsig!.sch).toString()).toBe('f1');
+            expect(Number(signed.txn.fee)).toBe(3000);
+            expect(signed.txn.sender.toString()).toBe(sender.address);
+            expect(isChatMessage(signed.txn.note ?? new Uint8Array())).toBe(true);
+        });
+
+        test('Ed25519 sendMessage signs with sig at the network min fee', async () => {
+            const stub = makeStubAlgod();
+            const service = new AlgorandService(TEST_CONFIG);
+            attachAlgod(service, stub.client);
+
+            const sender = createRandomChatAccount({ scheme: 'ed25519' }).account;
+            const recipient = createRandomChatAccount().account;
+
+            const result = await service.sendMessage(
+                sender,
+                recipient.address,
+                recipient.encryptionKeys.publicKey,
+                'hello ed25519'
+            );
+
+            expect(result.fee).toBe(1000);
+            const signed = algosdk.decodeSignedTransaction(stub.captured[0]);
+            expect(signed.sig).toBeDefined();
+            expect(signed.sig?.length).toBe(64);
+            expect(signed.pqsig).toBeUndefined();
+            expect(Number(signed.txn.fee)).toBe(1000);
+        });
+
+        test('Falcon sendReply and publishKey also use pqsig', async () => {
+            const stub = makeStubAlgod();
+            const service = new AlgorandService(TEST_CONFIG);
+            attachAlgod(service, stub.client);
+
+            const sender = createRandomChatAccount().account;
+            const recipient = createRandomChatAccount().account;
+
+            await service.sendReply(
+                sender,
+                recipient.address,
+                recipient.encryptionKeys.publicKey,
+                'reply',
+                'original-txid',
+                'original preview'
+            );
+            await service.publishKey(sender);
+
+            expect(stub.captured).toHaveLength(2);
+            for (const blob of stub.captured) {
+                const signed = algosdk.decodeSignedTransaction(blob);
+                expect(signed.pqsig).toBeDefined();
+                expect(signed.sig).toBeUndefined();
+                expect(Number(signed.txn.fee)).toBe(3000);
+            }
+        });
+
+        test('Falcon fee uses the payment fee when minFee is omitted', async () => {
+            const stub = makeStubAlgod(suggestedParams({ minFee: undefined }));
+            const service = new AlgorandService(TEST_CONFIG);
+            attachAlgod(service, stub.client);
+
+            const sender = createRandomChatAccount().account;
+            const recipient = createRandomChatAccount().account;
+
+            const result = await service.sendMessage(
+                sender,
+                recipient.address,
+                recipient.encryptionKeys.publicKey,
+                'no minFee'
+            );
+
+            expect(result.fee).toBe(3000);
+            expect(Number(algosdk.decodeSignedTransaction(stub.captured[0]).txn.fee)).toBe(3000);
+        });
+
+        test('Falcon ChatAccounts encrypt and decrypt standard envelopes', () => {
+            const sender = createRandomChatAccount().account;
+            const recipient = createRandomChatAccount().account;
+
+            const envelope = encryptMessage(
+                'post-quantum identity, classical ECDH',
+                sender.encryptionKeys.publicKey,
+                recipient.encryptionKeys.publicKey
+            );
+            const decrypted = decryptMessage(
+                envelope,
+                recipient.encryptionKeys.privateKey,
+                recipient.encryptionKeys.publicKey
+            );
+
+            expect(sender.scheme).toBe(SIGNING_SCHEME.FALCON_1024);
+            expect(recipient.scheme).toBe(SIGNING_SCHEME.FALCON_1024);
+            expect(decrypted?.text).toBe('post-quantum identity, classical ECDH');
         });
     });
 });

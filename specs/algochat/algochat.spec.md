@@ -1,6 +1,6 @@
 ---
 module: algochat
-version: 5
+version: 6
 status: stable
 files:
   - src/index.ts
@@ -203,42 +203,6 @@ Provides the TypeScript implementation of the AlgoChat encrypted-messaging proto
 | `canRetry` | Immutable pending-message lifecycle or retry helper. |
 | `FileSendQueueStorage` | Queue, cache, or key-storage abstraction with the persistence behavior defined below. |
 | `FileKeyStorage` | Queue, cache, or key-storage abstraction with the persistence behavior defined below. |
-| `MailboxRouterTransport` | Opt-in raven mailbox transport: put, atomic fan-out put, burn, reclaim, and off-chain box reads against a configured router app id. |
-| `MailboxTransportConfig` | Typed protocol, configuration, or result contract defined by this module. |
-| `MailboxSubmitOptions` | Typed protocol, configuration, or result contract defined by this module. |
-| `MailboxLeg` | Typed protocol, configuration, or result contract defined by this module. |
-| `MailboxLegPlan` | Typed protocol, configuration, or result contract defined by this module. |
-| `MailboxSendResult` | Typed protocol, configuration, or result contract defined by this module. |
-| `MailboxFanoutResult` | Typed protocol, configuration, or result contract defined by this module. |
-| `MailboxReadResult` | Typed protocol, configuration, or result contract defined by this module. |
-| `MailboxTxnResult` | Typed protocol, configuration, or result contract defined by this module. |
-| `deriveMsgKey` | Deterministic raven mailbox key-derivation operation defined below. |
-| `deriveMailboxId` | Deterministic raven mailbox key-derivation operation defined below. |
-| `mailboxMbr` | Exact mailbox box-MBR computation defined below. |
-| `planMailboxPut` | Pure mailbox put planning operation defined below. |
-| `planMailboxFanout` | Pure mailbox atomic fan-out planning operation defined below. |
-| `mailboxMethodSelector` | ARC-4 method selector derivation defined below. |
-| `MAILBOX_METHODS` | Published protocol value, size boundary, preset, or search default. |
-| `MAILBOX_MSG_KEY_DOMAIN` | Published protocol value, size boundary, preset, or search default. |
-| `MAILBOX_ID_DOMAIN` | Published protocol value, size boundary, preset, or search default. |
-| `MAILBOX_MAX_ENVELOPE_SIZE` | Published protocol value, size boundary, preset, or search default. |
-| `MAILBOX_TTL_ROUNDS` | Published protocol value, size boundary, preset, or search default. |
-| `MAILBOX_BOX_FLAT_MBR` | Published protocol value, size boundary, preset, or search default. |
-| `MAILBOX_BOX_BYTE_MBR` | Published protocol value, size boundary, preset, or search default. |
-| `MAILBOX_HEADER_SIZE` | Published protocol value, size boundary, preset, or search default. |
-| `MAILBOX_REFUND_FEE` | Published protocol value, size boundary, preset, or search default. |
-| `MAILBOX_MAX_GROUP_SIZE` | Published protocol value, size boundary, preset, or search default. |
-| `MAILBOX_MAX_FANOUT_LEGS` | Published protocol value, size boundary, preset, or search default. |
-| `VIEW_SECRET_SIZE` | Published protocol value, size boundary, preset, or search default. |
-| `MSG_KEY_SIZE` | Published protocol value, size boundary, preset, or search default. |
-| `MAILBOX_ID_SIZE` | Published protocol value, size boundary, preset, or search default. |
-| `MAX_COUNTER` | Published protocol value, size boundary, preset, or search default. |
-| `MailboxError` | Typed failure or stable error classification for the named operation. |
-| `InvalidViewSecretError` | Typed failure or stable error classification for the named operation. |
-| `InvalidMsgKeyError` | Typed failure or stable error classification for the named operation. |
-| `InvalidCounterError` | Typed failure or stable error classification for the named operation. |
-| `MailboxEnvelopeError` | Typed failure or stable error classification for the named operation. |
-| `MailboxFanoutLimitError` | Typed failure or stable error classification for the named operation. |
 
 ## Invariants
 
@@ -253,6 +217,7 @@ Provides the TypeScript implementation of the AlgoChat encrypted-messaging proto
 9. Network clients remain injectable so protocol behavior can be verified without live Algorand mutation.
 10. The package does not claim metadata privacy: account addresses, transaction timing, and on-chain activity remain observable.
 11. Encryption keys are derived from 32-byte mnemonic entropy for every scheme. `createRandomChatAccount()` defaults to Falcon-1024 `pqsig`. `createChatAccountFromMnemonic` without a scheme recovers Ed25519. The same mnemonic yields identical X25519 keys and different addresses across schemes. Falcon payments use at least `minFee * FALCON_FEE_MULTIPLIER` (3).
+12. Encrypted envelopes are delivered only as Algorand payment notes signed through `ChatAccount.txnSigner`. The package does not include a raven mailbox router or other dead-drop transport.
 
 ## Behavioral Examples
 
@@ -303,3 +268,4 @@ Then SendQueue processes eligible entries in order, records failures for retry, 
 | 2026-07-19 | CHG-0006-add-an-opt-in-mailboxroutertransport-speaking-the-raven-mailbox-protocol-per-co: Add an opt-in MailboxRouterTransport speaking the raven mailbox protocol: per-counter key derivation, MBR-exact put groups, atomic N-recipient fan-out, burn/reclaim/status, off-chain box reads, gated behind service config |
 | 5 | 2026-08-27 | Default new ChatAccounts to Falcon-1024 `pqsig`; mnemonic import without a scheme stays Ed25519; encryption seed is mnemonic entropy; Falcon min fee is 3× |
 | 5 | 2026-08-27 | CHG-0007-falcon-default-chataccounts: Default new ChatAccounts to Falcon-1024 pqsig while mnemonic import stays Ed25519 |
+| 6 | 2026-09-20 | Remove the raven mailbox router. Delivery is encrypted payment notes only. Falcon-1024 `pqsig` remains the default authorizer for new accounts. |
