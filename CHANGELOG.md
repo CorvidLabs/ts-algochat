@@ -1,0 +1,50 @@
+# Changelog
+
+## [v0.6.0] - 2026-09-20
+
+### CI
+
+- publish to GitHub Packages via GITHUB_TOKEN (no external npm token) (#30) (01dd5de)
+
+### Changes
+
+- pin Trust 1.2.0 and SpecSync 6.0.0 (#48) (301405e)
+- standardize GitHub Actions (path filters, concurrency, runners) (#28) (e556468)
+
+### Chores
+
+- pin Trust 1.2.1 (#52) (24ee2da)
+- adopt SpecSync 6 workflow v2 (#51) (75fe249)
+- archive remove-raven-mailbox SpecSync change (#50) (715a910)
+- archive Trust 1.2.0-rc.1 pin change (b53c28e)
+- pin Trust 1.2.0-rc.1 (SpecSync 6.0.0-rc.9) (#46) (546ad4f)
+- archive CHG-0007 Falcon ChatAccounts (d8fe232)
+- archive integrated SpecSync change CHG-0005 (#40) (ac0bd23)
+- archive integrated SpecSync change CHG-0004 (#38) (3b2ac4a)
+- archive integrated SpecSync change CHG-0003 (#36) (885496a)
+- archive integrated SpecSync changes CHG-0001, CHG-0002 (#35) (4d6d764)
+- add fledge.toml for dev lifecycle management (#27) (a6169eb)
+
+### Features
+
+- Falcon-1024 default for new ChatAccounts (#45) (a7e4466)
+- opt-in MailboxRouterTransport (raven mailbox protocol) (#41) (ca0ff09)
+
+### Fixes
+
+- state plainly that the protocol has no forward secrecy (#44) (46ea343)
+- NodeNext module resolution — make dist importable by raw Node.js ESM (#34) (66c188d)
+- scope publish version check to @corvidlabs/ts-algochat (#29) (b1b015c)
+
+### Other
+
+- specsync: archive CHG-0006 (MailboxRouterTransport, integrated in #41) (#42) (6a875de)
+- conformance: install CI workflow (CHG-0005) (#39) (e3b6041)
+- conformance: install CI workflow (CHG-0004) (#37) (3d93aae)
+- conformance: test-vector suite v1 (#32) (48b734a)
+- Adopt SpecSync 5 and Trust 1 (#31) (a7dfde3)
+
+### Removals
+
+- Raven mailbox router; keep Falcon encrypted notes (#49) (01efb62)
+
