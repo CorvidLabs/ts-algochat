@@ -16,3 +16,4 @@ AlgoChat applications need one interoperable TypeScript package for account mate
 - Sign payments through `ChatAccount.txnSigner` so Falcon-1024 `pqsig` and Ed25519 `sig` share one send path.
 - Derive X25519 keys from mnemonic entropy, never from a Falcon secret-key prefix.
 - Default new accounts to Falcon-1024; keep mnemonic import Ed25519 unless the caller passes a scheme.
+- Deliver envelopes only as encrypted payment notes. Do not include a raven mailbox router or other dead-drop transport.
