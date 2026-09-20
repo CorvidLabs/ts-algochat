@@ -1,6 +1,6 @@
 ---
 id: remove-the-raven-mailbox-router-transport-and-keep-algochat-as-encrypted-note-messaging-with-falcon-1024-post-quantum
-state: implementing
+state: accepted
 type: refactor
 base_commit: e532c343ccc8311277e42f2d4c1aac11fbe5c4a8
 ---

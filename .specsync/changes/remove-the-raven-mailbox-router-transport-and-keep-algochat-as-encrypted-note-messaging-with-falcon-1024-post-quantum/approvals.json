@@ -9,6 +9,13 @@
       "approved_delta_digests": {
         "algochat": "be6791fe2dc8b097c79be6adac3964ae25c806b47ca9961dfa48da22c528aeef"
       }
+    },
+    {
+      "gate": "acceptance",
+      "actor": "0xLeif",
+      "timestamp": 1789917915,
+      "digest": "ed417e8770046f9fa4292b8cb4d0fc056abccf35218161b3208c44fcbccd7e5d",
+      "note": "Closing approval: remove Raven mailbox; keep Falcon encrypted notes."
     }
   ],
   "reopenings": []
