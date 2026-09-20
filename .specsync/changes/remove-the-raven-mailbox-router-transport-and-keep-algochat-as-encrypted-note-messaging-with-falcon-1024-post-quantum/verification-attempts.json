@@ -17,6 +17,23 @@
       "requirement_ids": [
         "REQ-algochat-025"
       ]
+    },
+    {
+      "timestamp": 1789917723,
+      "commit": "9e4dbe0f7bb19005182f7a9d06ca2a3693e64d0d",
+      "contract_digest": "e58abae594030f94035de8cde3982fae2f5524e39914796adb352e0578a84e3f",
+      "workspace_digest": "ffa9153a86bccf462cb46dca29dc466fab229b5dfa5f0d308a1b2c8b3887818c",
+      "passed": true,
+      "commands": [
+        {
+          "command": "specsync check --spec algochat",
+          "success": true,
+          "exit_code": 0
+        }
+      ],
+      "requirement_ids": [
+        "REQ-algochat-025"
+      ]
     }
   ]
 }
