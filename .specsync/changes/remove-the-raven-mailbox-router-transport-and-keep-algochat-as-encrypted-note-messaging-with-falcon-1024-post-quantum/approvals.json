@@ -1,4 +1,15 @@
 {
-  "approvals": [],
+  "approvals": [
+    {
+      "gate": "definition",
+      "actor": "0xLeif",
+      "timestamp": 1789917592,
+      "digest": "e58abae594030f94035de8cde3982fae2f5524e39914796adb352e0578a84e3f",
+      "note": "Definition approval: remove Raven mailbox; keep Falcon encrypted notes.",
+      "approved_delta_digests": {
+        "algochat": "be6791fe2dc8b097c79be6adac3964ae25c806b47ca9961dfa48da22c528aeef"
+      }
+    }
+  ],
   "reopenings": []
 }

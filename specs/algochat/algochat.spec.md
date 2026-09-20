@@ -1,6 +1,6 @@
 ---
 module: algochat
-version: 6
+version: 7
 status: stable
 files:
   - src/index.ts
@@ -269,3 +269,4 @@ Then SendQueue processes eligible entries in order, records failures for retry, 
 | 5 | 2026-08-27 | Default new ChatAccounts to Falcon-1024 `pqsig`; mnemonic import without a scheme stays Ed25519; encryption seed is mnemonic entropy; Falcon min fee is 3× |
 | 5 | 2026-08-27 | CHG-0007-falcon-default-chataccounts: Default new ChatAccounts to Falcon-1024 pqsig while mnemonic import stays Ed25519 |
 | 6 | 2026-09-20 | Remove the raven mailbox router. Delivery is encrypted payment notes only. Falcon-1024 `pqsig` remains the default authorizer for new accounts. |
+| 7 | 2026-09-20 | remove-the-raven-mailbox-router-transport-and-keep-algochat-as-encrypted-note-messaging-with-falcon-1024-post-quantum: Remove the Raven mailbox router transport and keep AlgoChat as encrypted note messaging with Falcon-1024 post-quantum account support |

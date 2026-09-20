@@ -6,10 +6,11 @@
   "title": "Remove the Raven mailbox router transport and keep AlgoChat as encrypted note messaging with Falcon-1024 post-quantum account support",
   "description": "Remove the Raven mailbox router transport and keep AlgoChat as encrypted note messaging with Falcon-1024 post-quantum account support",
   "kind": "refactor",
-  "state": "draft",
+  "state": "verifying",
+  "canonical_applied": true,
   "base_commit": "e532c343ccc8311277e42f2d4c1aac11fbe5c4a8",
   "created_at": 1789916236,
-  "updated_at": 1789916408,
+  "updated_at": 1789917719,
   "affected_specs": [
     "algochat"
   ],
