@@ -61,7 +61,7 @@ export function decodeEnvelope(data: Uint8Array): ChatEnvelope {
         throw new EnvelopeError(`Unsupported protocol: ${protocolId}`);
     }
 
-    if (version !== PROTOCOL.VERSION) {
+    if (version !== PROTOCOL.VERSION && version !== PROTOCOL.VERSION_AAD) {
         throw new EnvelopeError(`Unsupported version: ${version}`);
     }
 
@@ -85,5 +85,6 @@ export function decodeEnvelope(data: Uint8Array): ChatEnvelope {
  * Checks if data is an AlgoChat message
  */
 export function isChatMessage(data: Uint8Array): boolean {
-    return data.length >= 2 && data[0] === PROTOCOL.VERSION && data[1] === PROTOCOL.PROTOCOL_ID;
+    if (data.length < 2 || data[1] !== PROTOCOL.PROTOCOL_ID) return false;
+    return data[0] === PROTOCOL.VERSION || data[0] === PROTOCOL.VERSION_AAD;
 }

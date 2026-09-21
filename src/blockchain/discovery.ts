@@ -46,19 +46,27 @@ export function parseKeyAnnouncement(
     }
 
     const publicKey = note.slice(0, 32);
-    let isVerified = false;
 
-    if (note.length >= 96 && ed25519PublicKey) {
-        // Has signature, verify it
+    if (note.length >= 96) {
+        // Signed announcement: verify or reject. A present-but-invalid
+        // signature must NOT fall through as an unverified key (#229) —
+        // that would let a malicious indexer substitute an attacker key.
+        if (!ed25519PublicKey) {
+            return undefined;
+        }
         const signature = note.slice(32, 96);
         try {
-            isVerified = verifyEncryptionKey(publicKey, ed25519PublicKey, signature);
+            if (!verifyEncryptionKey(publicKey, ed25519PublicKey, signature)) {
+                return undefined;
+            }
         } catch {
-            isVerified = false;
+            return undefined;
         }
+        return { publicKey, isVerified: true };
     }
 
-    return { publicKey, isVerified };
+    // Unsigned 32-byte announcement (TOFU / Falcon / legacy).
+    return { publicKey, isVerified: false };
 }
 
 /**

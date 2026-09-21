@@ -157,7 +157,10 @@ export interface EncryptionOptions {
 
 /** Protocol constants */
 export const PROTOCOL = {
+    /** Legacy envelopes (no header AAD). Still accepted on decrypt. */
     VERSION: 0x01,
+    /** Current envelopes bind the fixed header as ChaCha20-Poly1305 AAD (#232). */
+    VERSION_AAD: 0x02,
     PROTOCOL_ID: 0x01,
     HEADER_SIZE: 126,
     TAG_SIZE: 16,

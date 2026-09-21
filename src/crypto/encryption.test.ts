@@ -76,10 +76,14 @@ describe('Envelope Encoding', () => {
     });
 
     test('isChatMessage returns false for invalid messages', () => {
-        expect(isChatMessage(new Uint8Array([0x02, 0x01]))).toBe(false);
+        expect(isChatMessage(new Uint8Array([0x03, 0x01]))).toBe(false);
         expect(isChatMessage(new Uint8Array([0x01, 0x02]))).toBe(false);
         expect(isChatMessage(new Uint8Array([0x01]))).toBe(false);
         expect(isChatMessage(new Uint8Array([]))).toBe(false);
+    });
+
+    test('isChatMessage accepts VERSION_AAD (#232)', () => {
+        expect(isChatMessage(new Uint8Array([0x02, 0x01, ...new Array(140).fill(0)]))).toBe(true);
     });
 });
 
@@ -371,5 +375,72 @@ describe('PSK Encryption', () => {
         );
 
         expect(decrypted?.text).toBe(original);
+    });
+});
+
+describe('header AAD binding (#232)', () => {
+    test('round-trip succeeds with header bound as AAD', () => {
+        const senderKeys = deriveEncryptionKeys(new Uint8Array(32).fill(1));
+        const recipientKeys = deriveEncryptionKeys(new Uint8Array(32).fill(2));
+        const envelope = encryptMessage('aad-bound', senderKeys.publicKey, recipientKeys.publicKey);
+        const decrypted = decryptMessage(envelope, recipientKeys.privateKey, recipientKeys.publicKey);
+        expect(decrypted?.text).toBe('aad-bound');
+    });
+
+    test('tampering with protocolId fails closed', () => {
+        const senderKeys = deriveEncryptionKeys(new Uint8Array(32).fill(1));
+        const recipientKeys = deriveEncryptionKeys(new Uint8Array(32).fill(2));
+        const envelope = encryptMessage('secret', senderKeys.publicKey, recipientKeys.publicKey);
+        // Downgrade / rewrite protocol byte after AEAD seal.
+        envelope.protocolId = 0x02;
+        expect(() =>
+            decryptMessage(envelope, recipientKeys.privateKey, recipientKeys.publicKey),
+        ).toThrow();
+    });
+
+    test('tampering with version fails closed', () => {
+        const senderKeys = deriveEncryptionKeys(new Uint8Array(32).fill(1));
+        const recipientKeys = deriveEncryptionKeys(new Uint8Array(32).fill(2));
+        const envelope = encryptMessage('secret', senderKeys.publicKey, recipientKeys.publicKey);
+        // Downgrade to legacy version so decrypt skips AAD against an AAD seal.
+        envelope.version = 0x01;
+        expect(() =>
+            decryptMessage(envelope, recipientKeys.privateKey, recipientKeys.publicKey),
+        ).toThrow();
+    });
+
+    test('sender path also decrypts AAD-bound envelopes', () => {
+        const senderKeys = deriveEncryptionKeys(new Uint8Array(32).fill(3));
+        const recipientKeys = deriveEncryptionKeys(new Uint8Array(32).fill(4));
+        const envelope = encryptMessage('legacy-ok', senderKeys.publicKey, recipientKeys.publicKey);
+        const asSender = decryptMessage(envelope, senderKeys.privateKey, senderKeys.publicKey);
+        expect(asSender?.text).toBe('legacy-ok');
+    });
+});
+
+describe('envelope header fuzz (#232)', () => {
+    test('random single-byte header mutations fail decrypt', () => {
+        const senderKeys = deriveEncryptionKeys(new Uint8Array(32).fill(5));
+        const recipientKeys = deriveEncryptionKeys(new Uint8Array(32).fill(6));
+        const envelope = encryptMessage('fuzz', senderKeys.publicKey, recipientKeys.publicKey);
+        const encoded = encodeEnvelope(envelope);
+
+        let failures = 0;
+        // Flip every header byte except we skip ciphertext region.
+        for (let i = 0; i < 126; i++) {
+            const mutated = new Uint8Array(encoded);
+            mutated[i] = (mutated[i] + 1) & 0xff;
+            try {
+                const decoded = decodeEnvelope(mutated);
+                decryptMessage(decoded, recipientKeys.privateKey, recipientKeys.publicKey);
+                // version/protocol mutations may throw at decode; others at decrypt.
+            } catch {
+                failures += 1;
+                continue;
+            }
+            // If decode+decrypt both succeeded, that is a miss — count it.
+        }
+        // Every header byte flip must fail closed (decode or decrypt).
+        expect(failures).toBe(126);
     });
 });

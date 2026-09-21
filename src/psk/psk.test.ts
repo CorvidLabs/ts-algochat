@@ -143,13 +143,19 @@ describe('PSK Envelope Encoding/Decoding', () => {
     });
 
     test('isPSKMessage rejects non-PSK messages', () => {
-        // Standard v1 protocol
+        // Standard protocol (either version)
         expect(isPSKMessage(new Uint8Array([0x01, 0x01]))).toBe(false);
-        // Wrong version
-        expect(isPSKMessage(new Uint8Array([0x02, 0x02]))).toBe(false);
+        expect(isPSKMessage(new Uint8Array([0x02, 0x01]))).toBe(false);
+        // Unsupported version
+        expect(isPSKMessage(new Uint8Array([0x03, 0x02]))).toBe(false);
         // Too short
         expect(isPSKMessage(new Uint8Array([0x01]))).toBe(false);
         expect(isPSKMessage(new Uint8Array([]))).toBe(false);
+    });
+
+    test('isPSKMessage accepts VERSION and VERSION_AAD (#232)', () => {
+        expect(isPSKMessage(new Uint8Array([0x01, 0x02]))).toBe(true);
+        expect(isPSKMessage(new Uint8Array([0x02, 0x02]))).toBe(true);
     });
 
     test('preserves large counter values', () => {
@@ -272,7 +278,7 @@ describe('PSK Encrypt/Decrypt', () => {
             42,
         );
 
-        expect(envelope.version).toBe(PSK_PROTOCOL.VERSION);
+        expect(envelope.version).toBe(PSK_PROTOCOL.VERSION_AAD);
         expect(envelope.protocolId).toBe(PSK_PROTOCOL.PROTOCOL_ID);
         expect(envelope.ratchetCounter).toBe(42);
     });
