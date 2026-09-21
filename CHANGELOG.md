@@ -10,6 +10,8 @@
 - ChaCha20-Poly1305 binds the fixed envelope header as AAD for `VERSION_AAD`
   (0x02) standard and PSK envelopes; legacy `VERSION` (0x01) still decrypts (#232).
 - Header single-byte mutation fuzz coverage for standard envelopes.
+- Regenerate conformance vectors for `VERSION_AAD` (0x02) and AAD-bound
+  envelopes; recipient-path tamper of `encryptedSenderKey` now fails closed.
 
 ## [v0.6.0] - 2026-09-20
 
