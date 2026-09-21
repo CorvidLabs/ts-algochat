@@ -143,13 +143,19 @@ describe('PSK Envelope Encoding/Decoding', () => {
     });
 
     test('isPSKMessage rejects non-PSK messages', () => {
-        // Standard v1 protocol
+        // Standard protocol (either version)
         expect(isPSKMessage(new Uint8Array([0x01, 0x01]))).toBe(false);
-        // Wrong version
-        expect(isPSKMessage(new Uint8Array([0x02, 0x02]))).toBe(false);
+        expect(isPSKMessage(new Uint8Array([0x02, 0x01]))).toBe(false);
+        // Unsupported version
+        expect(isPSKMessage(new Uint8Array([0x03, 0x02]))).toBe(false);
         // Too short
         expect(isPSKMessage(new Uint8Array([0x01]))).toBe(false);
         expect(isPSKMessage(new Uint8Array([]))).toBe(false);
+    });
+
+    test('isPSKMessage accepts VERSION and VERSION_AAD (#232)', () => {
+        expect(isPSKMessage(new Uint8Array([0x01, 0x02]))).toBe(true);
+        expect(isPSKMessage(new Uint8Array([0x02, 0x02]))).toBe(true);
     });
 
     test('preserves large counter values', () => {
@@ -272,7 +278,7 @@ describe('PSK Encrypt/Decrypt', () => {
             42,
         );
 
-        expect(envelope.version).toBe(PSK_PROTOCOL.VERSION);
+        expect(envelope.version).toBe(PSK_PROTOCOL.VERSION_AAD);
         expect(envelope.protocolId).toBe(PSK_PROTOCOL.PROTOCOL_ID);
         expect(envelope.ratchetCounter).toBe(42);
     });
@@ -446,5 +452,65 @@ describe('PSK Exchange URI', () => {
         const parsed = parsePSKExchangeURI(uri);
 
         expect(parsed.label).toBe(label);
+    });
+});
+
+describe('PSK header AAD binding (#232)', () => {
+    const aliceKeys = deriveEncryptionKeys(new Uint8Array(32).fill(1));
+    const bobKeys = deriveEncryptionKeys(new Uint8Array(32).fill(2));
+    const currentPSK = derivePSKAtCounter(INITIAL_PSK, 0);
+
+    test('round-trip succeeds with header bound as AAD', () => {
+        const envelope = encryptPSKMessage('aad-psk', aliceKeys.publicKey, bobKeys.publicKey, currentPSK, 7);
+        const decrypted = decryptPSKMessage(envelope, bobKeys.privateKey, bobKeys.publicKey, currentPSK);
+        expect(decrypted?.text).toBe('aad-psk');
+    });
+
+    test('version 0x02→0x01 downgrade fails closed', () => {
+        const envelope = encryptPSKMessage('secret', aliceKeys.publicKey, bobKeys.publicKey, currentPSK, 0);
+        envelope.version = PSK_PROTOCOL.VERSION;
+        expect(() =>
+            decryptPSKMessage(envelope, bobKeys.privateKey, bobKeys.publicKey, currentPSK),
+        ).toThrow();
+    });
+
+    test('protocolId flip fails closed', () => {
+        const envelope = encryptPSKMessage('secret', aliceKeys.publicKey, bobKeys.publicKey, currentPSK, 0);
+        envelope.protocolId = 0x01;
+        expect(() =>
+            decryptPSKMessage(envelope, bobKeys.privateKey, bobKeys.publicKey, currentPSK),
+        ).toThrow();
+    });
+
+    test('ratchetCounter mutation fails closed', () => {
+        const envelope = encryptPSKMessage('secret', aliceKeys.publicKey, bobKeys.publicKey, currentPSK, 3);
+        envelope.ratchetCounter = 4;
+        expect(() =>
+            decryptPSKMessage(envelope, bobKeys.privateKey, bobKeys.publicKey, currentPSK),
+        ).toThrow();
+    });
+});
+
+describe('PSK envelope header fuzz (#232)', () => {
+    test('random single-byte header mutations fail decrypt', () => {
+        const aliceKeys = deriveEncryptionKeys(new Uint8Array(32).fill(7));
+        const bobKeys = deriveEncryptionKeys(new Uint8Array(32).fill(8));
+        const currentPSK = derivePSKAtCounter(INITIAL_PSK, 0);
+        const envelope = encryptPSKMessage('fuzz', aliceKeys.publicKey, bobKeys.publicKey, currentPSK, 0);
+        const encoded = encodePSKEnvelope(envelope);
+
+        let failures = 0;
+        for (let i = 0; i < PSK_PROTOCOL.HEADER_SIZE; i++) {
+            const mutated = new Uint8Array(encoded);
+            mutated[i] = (mutated[i] + 1) & 0xff;
+            try {
+                const decoded = decodePSKEnvelope(mutated);
+                decryptPSKMessage(decoded, bobKeys.privateKey, bobKeys.publicKey, currentPSK);
+            } catch {
+                failures += 1;
+                continue;
+            }
+        }
+        expect(failures).toBe(PSK_PROTOCOL.HEADER_SIZE);
     });
 });

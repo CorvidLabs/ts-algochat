@@ -9,7 +9,7 @@ import { describe, test, expect } from 'bun:test';
 import algosdk from 'algosdk';
 import { AlgorandService, FALCON_FEE_MULTIPLIER, type AlgorandConfig } from './algorand.service.js';
 import { SIGNING_SCHEME, createRandomChatAccount } from './mnemonic.service.js';
-import { decryptMessage, encryptMessage, encodeEnvelope, isChatMessage } from '../crypto/index.js';
+import { decryptMessage, encryptMessage, encodeEnvelope, isChatMessage, verifyEncryptionKey } from '../crypto/index.js';
 
 const TEST_CONFIG: AlgorandConfig = {
     algodToken: 'test-token',
@@ -333,6 +333,36 @@ describe('AlgorandService', () => {
                 expect(signed.sig).toBeUndefined();
                 expect(Number(signed.txn.fee)).toBe(3000);
             }
+            // Falcon publishKey still publishes a self-encrypted isChatMessage envelope.
+            const publishNote = algosdk.decodeSignedTransaction(stub.captured[1]).txn.note ?? new Uint8Array();
+            expect(isChatMessage(publishNote)).toBe(true);
+        });
+
+        test('Ed25519 publishKey writes 96-byte signed announcement (#229)', async () => {
+            const stub = makeStubAlgod();
+            const service = new AlgorandService(TEST_CONFIG);
+            attachAlgod(service, stub.client);
+
+            const sender = createRandomChatAccount({ scheme: 'ed25519' }).account;
+            expect(sender.scheme).toBe(SIGNING_SCHEME.ED25519);
+            expect(sender.account).toBeDefined();
+
+            await service.publishKey(sender);
+
+            expect(stub.captured).toHaveLength(1);
+            const signed = algosdk.decodeSignedTransaction(stub.captured[0]);
+            expect(signed.sig).toBeDefined();
+            expect(signed.pqsig).toBeUndefined();
+
+            const note = signed.txn.note ?? new Uint8Array();
+            expect(note.length).toBe(96);
+            expect(isChatMessage(note)).toBe(false);
+
+            const x25519 = note.slice(0, 32);
+            const signature = note.slice(32, 96);
+            const addressPublicKey = algosdk.Address.fromString(sender.address).publicKey;
+            expect(verifyEncryptionKey(x25519, addressPublicKey, signature)).toBe(true);
+            expect(Buffer.from(x25519).equals(Buffer.from(sender.encryptionKeys.publicKey))).toBe(true);
         });
 
         test('Falcon fee uses the payment fee when minFee is omitted', async () => {

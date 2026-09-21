@@ -11,6 +11,7 @@ import { sha256 } from '@noble/hashes/sha256';
 import { randomBytes } from '@noble/ciphers/webcrypto';
 import { ChatEnvelope, DecryptedContent, PROTOCOL, type EncryptionOptions } from '../models/types.js';
 import { generateEphemeralKeyPair, x25519ECDH, uint8ArrayEquals } from './keys.js';
+import { standardHeaderAAD } from './aad.js';
 
 const ENCRYPTION_INFO_PREFIX = new TextEncoder().encode('AlgoChatV1');
 const SENDER_KEY_INFO_PREFIX = new TextEncoder().encode('AlgoChatV1-SenderKey');
@@ -68,11 +69,8 @@ export function encryptMessage(
     // Step 3: Generate random nonce
     const nonce = randomBytes(12);
 
-    // Step 4: Encrypt message
-    const cipher = chacha20poly1305(symmetricKey, nonce);
-    const ciphertextWithTag = cipher.encrypt(messageBytes);
-
-    // Step 5: Encrypt symmetric key for sender (bidirectional decryption)
+    // Step 4: Encrypt symmetric key for sender (bidirectional decryption)
+    // before the payload so the full fixed header can bind as AAD (#232).
     const senderSharedSecret = x25519ECDH(ephemeral.privateKey, senderPublicKey);
     const senderIkm = deriveIKM(senderSharedSecret, options?.psk);
 
@@ -82,8 +80,21 @@ export function encryptMessage(
     const senderCipher = chacha20poly1305(senderEncryptionKey, nonce);
     const encryptedSenderKey = senderCipher.encrypt(symmetricKey);
 
+    // Step 5: Encrypt message with the fixed header bound as AAD
+    const version = PROTOCOL.VERSION_AAD;
+    const aad = standardHeaderAAD({
+        version,
+        protocolId: PROTOCOL.PROTOCOL_ID,
+        senderPublicKey,
+        ephemeralPublicKey: ephemeral.publicKey,
+        nonce,
+        encryptedSenderKey,
+    });
+    const cipher = chacha20poly1305(symmetricKey, nonce, aad);
+    const ciphertextWithTag = cipher.encrypt(messageBytes);
+
     return {
-        version: PROTOCOL.VERSION,
+        version,
         protocolId: PROTOCOL.PROTOCOL_ID,
         senderPublicKey,
         ephemeralPublicKey: ephemeral.publicKey,
@@ -164,9 +175,7 @@ function decryptAsRecipient(
     const info = concatBytes(ENCRYPTION_INFO_PREFIX, envelope.senderPublicKey, recipientPublicKey);
     const symmetricKey = hkdf(sha256, ikm, envelope.ephemeralPublicKey, info, 32);
 
-    // Decrypt message
-    const cipher = chacha20poly1305(symmetricKey, envelope.nonce);
-    return cipher.decrypt(envelope.ciphertext);
+    return decryptCiphertextWithHeaderAAD(symmetricKey, envelope);
 }
 
 /**
@@ -189,9 +198,20 @@ function decryptAsSender(
     const senderCipher = chacha20poly1305(senderDecryptionKey, envelope.nonce);
     const symmetricKey = senderCipher.decrypt(envelope.encryptedSenderKey);
 
-    // Step 3: Decrypt message using recovered symmetric key
-    const cipher = chacha20poly1305(symmetricKey, envelope.nonce);
-    return cipher.decrypt(envelope.ciphertext);
+    // Step 3: Decrypt message using recovered symmetric key (header as AAD)
+    return decryptCiphertextWithHeaderAAD(symmetricKey, envelope);
+}
+
+/**
+ * Decrypts payload ciphertext. VERSION_AAD envelopes require header AAD (#232);
+ * legacy VERSION envelopes decrypt without AAD so history stays readable.
+ */
+function decryptCiphertextWithHeaderAAD(symmetricKey: Uint8Array, envelope: ChatEnvelope): Uint8Array {
+    if (envelope.version >= PROTOCOL.VERSION_AAD) {
+        const aad = standardHeaderAAD(envelope);
+        return chacha20poly1305(symmetricKey, envelope.nonce, aad).decrypt(envelope.ciphertext);
+    }
+    return chacha20poly1305(symmetricKey, envelope.nonce).decrypt(envelope.ciphertext);
 }
 
 /**

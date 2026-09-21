@@ -191,7 +191,7 @@ const check = (label, cond) => {
         if (c.name.includes('classification')) {
             return { result: 'classified', isChatMessage: algochat.isChatMessage(bytes), isPSKMessage: algochat.isPSKMessage(bytes) };
         }
-        if (c.name.includes('truncated') || c.name.includes('version')) {
+        if (c.name.includes('truncated') || c.name.includes('unsupported version')) {
             try { algochat.decodeEnvelope(bytes); return { result: 'decoded' }; }
             catch (e) { return { result: 'throw', error: e.constructor.name }; }
         }

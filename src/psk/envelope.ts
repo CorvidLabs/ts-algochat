@@ -82,7 +82,7 @@ export function decodePSKEnvelope(data: Uint8Array): PSKEnvelope {
     const version = data[0];
     const protocolId = data[1];
 
-    if (version !== PSK_PROTOCOL.VERSION) {
+    if (version !== PSK_PROTOCOL.VERSION && version !== PSK_PROTOCOL.VERSION_AAD) {
         throw new PSKEnvelopeError(`Unsupported version: ${version}`);
     }
 
@@ -120,5 +120,6 @@ export function decodePSKEnvelope(data: Uint8Array): PSKEnvelope {
  * Checks if data is a PSK protocol message.
  */
 export function isPSKMessage(data: Uint8Array): boolean {
-    return data.length >= 2 && data[0] === PSK_PROTOCOL.VERSION && data[1] === PSK_PROTOCOL.PROTOCOL_ID;
+    if (data.length < 2 || data[1] !== PSK_PROTOCOL.PROTOCOL_ID) return false;
+    return data[0] === PSK_PROTOCOL.VERSION || data[0] === PSK_PROTOCOL.VERSION_AAD;
 }

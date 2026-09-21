@@ -9,6 +9,7 @@
 import { chacha20poly1305 } from '@noble/ciphers/chacha';
 import { randomBytes } from '@noble/ciphers/webcrypto';
 import { generateEphemeralKeyPair, x25519ECDH, uint8ArrayEquals } from '../crypto/keys.js';
+import { pskHeaderAAD } from '../crypto/aad.js';
 import { type DecryptedContent } from '../models/types.js';
 import { PSK_PROTOCOL, type PSKEnvelope } from './types.js';
 import { deriveHybridSymmetricKey, deriveSenderKey } from './ratchet.js';
@@ -63,14 +64,10 @@ export function encryptPSKMessage(
     // Step 4: Random 12-byte nonce
     const nonce = randomBytes(12);
 
-    // Step 5: Encrypt message with ChaCha20-Poly1305
-    const cipher = chacha20poly1305(symmetricKey, nonce);
-    const ciphertextWithTag = cipher.encrypt(messageBytes);
-
-    // Step 6: ECDH with sender: ephemeral_private * sender_public
+    // Step 5: ECDH with sender: ephemeral_private * sender_public
     const senderSharedSecret = x25519ECDH(ephemeral.privateKey, senderPublicKey);
 
-    // Step 7: Derive sender key for bidirectional decryption
+    // Step 6: Derive sender key for bidirectional decryption
     const senderEncryptionKey = deriveSenderKey(
         senderSharedSecret,
         currentPSK,
@@ -78,13 +75,28 @@ export function encryptPSKMessage(
         senderPublicKey,
     );
 
-    // Step 8: Encrypt symmetric key with sender key (same nonce)
+    // Step 7: Encrypt symmetric key with sender key (same nonce) before
+    // binding the full fixed header as AAD on the payload (#232).
     const senderCipher = chacha20poly1305(senderEncryptionKey, nonce);
     const encryptedSenderKey = senderCipher.encrypt(symmetricKey);
 
+    // Step 8: Encrypt message with ChaCha20-Poly1305, header as AAD
+    const version = PSK_PROTOCOL.VERSION_AAD;
+    const aad = pskHeaderAAD({
+        version,
+        protocolId: PSK_PROTOCOL.PROTOCOL_ID,
+        ratchetCounter,
+        senderPublicKey,
+        ephemeralPublicKey: ephemeral.publicKey,
+        nonce,
+        encryptedSenderKey,
+    });
+    const cipher = chacha20poly1305(symmetricKey, nonce, aad);
+    const ciphertextWithTag = cipher.encrypt(messageBytes);
+
     // Step 9: Build PSKEnvelope
     return {
-        version: PSK_PROTOCOL.VERSION,
+        version,
         protocolId: PSK_PROTOCOL.PROTOCOL_ID,
         ratchetCounter,
         senderPublicKey,
@@ -152,9 +164,7 @@ function decryptPSKAsRecipient(
         recipientPublicKey,
     );
 
-    // Decrypt message
-    const cipher = chacha20poly1305(symmetricKey, envelope.nonce);
-    return cipher.decrypt(envelope.ciphertext);
+    return decryptPskCiphertextWithHeaderAAD(symmetricKey, envelope);
 }
 
 /**
@@ -181,9 +191,20 @@ function decryptPSKAsSender(
     const senderCipher = chacha20poly1305(senderDecryptionKey, envelope.nonce);
     const symmetricKey = senderCipher.decrypt(envelope.encryptedSenderKey);
 
-    // Step 4: Decrypt message using recovered symmetric key
-    const cipher = chacha20poly1305(symmetricKey, envelope.nonce);
-    return cipher.decrypt(envelope.ciphertext);
+    // Step 4: Decrypt message using recovered symmetric key (header as AAD)
+    return decryptPskCiphertextWithHeaderAAD(symmetricKey, envelope);
+}
+
+/**
+ * Decrypts PSK payload ciphertext. VERSION_AAD requires header AAD (#232);
+ * legacy VERSION decrypts without AAD so history stays readable.
+ */
+function decryptPskCiphertextWithHeaderAAD(symmetricKey: Uint8Array, envelope: PSKEnvelope): Uint8Array {
+    if (envelope.version >= PSK_PROTOCOL.VERSION_AAD) {
+        const aad = pskHeaderAAD(envelope);
+        return chacha20poly1305(symmetricKey, envelope.nonce, aad).decrypt(envelope.ciphertext);
+    }
+    return chacha20poly1305(symmetricKey, envelope.nonce).decrypt(envelope.ciphertext);
 }
 
 /**

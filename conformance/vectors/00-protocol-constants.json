@@ -8,6 +8,7 @@
   "constants": {
     "PROTOCOL": {
       "VERSION": 1,
+      "VERSION_AAD": 2,
       "PROTOCOL_ID": 1,
       "HEADER_SIZE": 126,
       "TAG_SIZE": 16,
@@ -17,6 +18,7 @@
     },
     "PSK_PROTOCOL": {
       "VERSION": 1,
+      "VERSION_AAD": 2,
       "PROTOCOL_ID": 2,
       "HEADER_SIZE": 130,
       "TAG_SIZE": 16,

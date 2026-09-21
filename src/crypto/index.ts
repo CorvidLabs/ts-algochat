@@ -15,3 +15,5 @@ export {
     ED25519_PUBLIC_KEY_SIZE,
     X25519_PUBLIC_KEY_SIZE,
 } from './signature.js';
+
+export { standardHeaderAAD, pskHeaderAAD, STANDARD_PREFIX_AAD_SIZE, PSK_PREFIX_AAD_SIZE } from './aad.js';

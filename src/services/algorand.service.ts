@@ -6,7 +6,8 @@
 
 import algosdk from 'algosdk';
 import type { Message, Conversation, SendResult, SendOptions, X25519KeyPair, DiscoveredKey, EncryptionOptions } from '../models/types.js';
-import { encryptMessage, encryptReply, decryptMessage, encodeEnvelope, decodeEnvelope, isChatMessage } from '../crypto/index.js';
+import { encryptMessage, encryptReply, decryptMessage, encodeEnvelope, decodeEnvelope, isChatMessage, signEncryptionKey } from '../crypto/index.js';
+import { parseKeyAnnouncement } from '../blockchain/discovery.js';
 import { ChatError } from '../errors/ChatError.js';
 import { SIGNING_SCHEME, type SigningScheme } from './mnemonic.service.js';
 
@@ -460,6 +461,17 @@ export class AlgorandService {
     ): Promise<DiscoveredKey | undefined> {
         let searched = 0;
         let nextToken: string | undefined;
+        let tofuCandidate: DiscoveredKey | undefined;
+
+        // Algorand address encodes the Ed25519 verifying key for classical
+        // accounts. Falcon addresses are not Ed25519 keys — announcement
+        // verification is skipped and payment authorization remains the bind.
+        let ed25519PublicKey: Uint8Array | undefined;
+        try {
+            ed25519PublicKey = algosdk.Address.fromString(address).publicKey;
+        } catch {
+            ed25519PublicKey = undefined;
+        }
 
         while (true) {
             const limit = maxDepth
@@ -484,18 +496,42 @@ export class AlgorandService {
                 if (!tx.note) continue;
 
                 const noteBytes = base64ToBytes(tx.note);
+                const receiver = tx.paymentTransaction?.receiver;
+                const meta = {
+                    address,
+                    discoveredInTx: tx.id,
+                    discoveredAtRound: Number(tx.confirmedRound ?? 0),
+                    discoveredAt: new Date(Number(tx.roundTime ?? 0) * 1000),
+                };
+
+                // Prefer signed key announcements (self-transfer notes of exactly
+                // 32 or 96 bytes). verifyEncryptionKey runs inside parseKeyAnnouncement (#229).
+                // Chat envelopes are much larger; do not mis-parse them as announcements.
+                if (receiver === address && (noteBytes.length === 32 || noteBytes.length === 96)) {
+                    const announced = parseKeyAnnouncement(noteBytes, ed25519PublicKey);
+                    if (announced?.isVerified) {
+                        return { ...announced, ...meta };
+                    }
+                    // Forged signed announcement: skip entirely.
+                    if (noteBytes.length === 96) continue;
+                    // Unsigned 32-byte announcement: TOFU candidate.
+                    if (announced && !tofuCandidate) {
+                        tofuCandidate = { ...announced, ...meta };
+                    }
+                    continue;
+                }
+
                 if (!isChatMessage(noteBytes)) continue;
 
                 try {
                     const envelope = decodeEnvelope(noteBytes);
-                    return {
-                        publicKey: envelope.senderPublicKey,
-                        isVerified: false,
-                        address,
-                        discoveredInTx: tx.id,
-                        discoveredAtRound: Number(tx.confirmedRound ?? 0),
-                        discoveredAt: new Date(Number(tx.roundTime ?? 0) * 1000),
-                    };
+                    if (!tofuCandidate) {
+                        tofuCandidate = {
+                            publicKey: envelope.senderPublicKey,
+                            isVerified: false,
+                            ...meta,
+                        };
+                    }
                 } catch (error) {
                     console.warn(`[AlgoChat] Failed to decode envelope from ${tx.id}:`, error);
                     continue;
@@ -509,7 +545,7 @@ export class AlgorandService {
             if (maxDepth && searched >= maxDepth) break;
         }
 
-        return undefined;
+        return tofuCandidate;
     }
 
     /**
@@ -533,17 +569,28 @@ export class AlgorandService {
      * Publishes the account's encryption key to the blockchain
      */
     async publishKey(chatAccount: ChatAccount): Promise<string> {
-        const payload = JSON.stringify({ type: 'key-publish' });
+        // Ed25519 accounts publish a signed key announcement (X25519 || Ed25519
+        // sig) so discovery can verifyEncryptionKey-bind identity (#229).
+        // Falcon accounts keep the legacy self-encrypted envelope; the payment
+        // pqsig is the protocol bind and address bytes are not an Ed25519 key.
+        let note: Uint8Array;
+        if (chatAccount.scheme === 'ed25519' && chatAccount.account) {
+            const signingSeed = chatAccount.account.sk.slice(0, 32);
+            const signature = signEncryptionKey(chatAccount.encryptionKeys.publicKey, signingSeed);
+            note = new Uint8Array(96);
+            note.set(chatAccount.encryptionKeys.publicKey, 0);
+            note.set(signature, 32);
+        } else {
+            const payload = JSON.stringify({ type: 'key-publish' });
+            const envelope = encryptMessage(
+                payload,
+                chatAccount.encryptionKeys.publicKey,
+                chatAccount.encryptionKeys.publicKey, // Self
+                this.encryptionOptions
+            );
+            note = encodeEnvelope(envelope);
+        }
 
-        // Self-encrypt
-        const envelope = encryptMessage(
-            payload,
-            chatAccount.encryptionKeys.publicKey,
-            chatAccount.encryptionKeys.publicKey, // Self
-            this.encryptionOptions
-        );
-
-        const note = encodeEnvelope(envelope);
         const params = this.suggestedParamsFor(
             chatAccount,
             await this.algodClient.getTransactionParams().do()

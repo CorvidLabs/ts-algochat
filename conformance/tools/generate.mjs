@@ -414,6 +414,18 @@ const attemptPskDecrypt = (bytes, priv, pub, psk) => {
 };
 
 const wrongPsk = algochat.derivePSKAtCounter(INITIAL_PSK, 1);
+const setByte = (u8, idx, val) => {
+    const c = new Uint8Array(u8);
+    c[idx] = val;
+    return c;
+};
+// VERSION_AAD binds the full fixed header — mutate version/protocol/counter/sender-key.
+const versionDowngrade = setByte(capturedStdBytes, 0, algochat.PROTOCOL.VERSION);
+const protocolFlip = setByte(capturedStdBytes, 1, 0x02);
+const pskTamperedSenderKey = flip(capturedPskBytes, algochat.PSK_PROTOCOL.HEADER_SIZE - 1);
+const pskVersionDowngrade = setByte(capturedPskBytes, 0, algochat.PSK_PROTOCOL.VERSION);
+const pskProtocolFlip = setByte(capturedPskBytes, 1, 0x01);
+const pskCounterMut = flip(capturedPskBytes, 5); // last byte of BE ratchetCounter
 
 write('06-negative-cases.json', {
     ...GENERATOR,
@@ -428,10 +440,9 @@ write('06-negative-cases.json', {
             expect: attemptDecrypt(tamperedCiphertext, keysB.privateKey, keysB.publicKey),
         },
         {
-            name: 'tampered encryptedSenderKey — recipient path (documented: unaffected)',
+            name: 'tampered encryptedSenderKey — recipient path (must fail)',
             input: hex(tamperedSenderKey),
-            note: 'The recipient path decrypts via ephemeral-key ECDH and never reads encryptedSenderKey; ' +
-                'the field exists solely for the sender path, which authenticates it with its own AEAD tag.',
+            note: 'VERSION_AAD binds the full 126-byte header including encryptedSenderKey; flipping that field breaks the recipient-path AEAD tag.',
             expect: attemptDecrypt(tamperedSenderKey, keysB.privateKey, keysB.publicKey),
         },
         {
@@ -439,6 +450,18 @@ write('06-negative-cases.json', {
             input: hex(tamperedSenderKey),
             note: 'The sender path unwraps its own copy key; a flipped byte breaks that AEAD tag.',
             expect: attemptDecrypt(tamperedSenderKey, keysA.privateKey, keysA.publicKey),
+        },
+        {
+            name: 'version 0x02→0x01 downgrade (must fail)',
+            input: hex(versionDowngrade),
+            note: 'Ciphertext was sealed under VERSION_AAD with header AAD; downgrading the version byte to legacy 0x01 causes decrypt to omit AAD and fail closed.',
+            expect: attemptDecrypt(versionDowngrade, keysB.privateKey, keysB.publicKey),
+        },
+        {
+            name: 'protocolId flip (must fail)',
+            input: hex(protocolFlip),
+            note: 'protocolId is part of the VERSION_AAD-bound header; flipping it fails decode (wrong protocol) / AAD auth.',
+            expect: attemptDecrypt(protocolFlip, keysB.privateKey, keysB.publicKey),
         },
         {
             name: 'wrong private key (A tries to read B’s copy)',
@@ -465,6 +488,30 @@ write('06-negative-cases.json', {
             name: 'PSK envelope: tampered ciphertext',
             input: hex(tamperedPsk),
             expect: attemptPskDecrypt(tamperedPsk, keysB.privateKey, keysB.publicKey, pskAt0),
+        },
+        {
+            name: 'PSK envelope: tampered encryptedSenderKey (must fail)',
+            input: hex(pskTamperedSenderKey),
+            note: 'VERSION_AAD binds the full 130-byte PSK header including encryptedSenderKey.',
+            expect: attemptPskDecrypt(pskTamperedSenderKey, keysB.privateKey, keysB.publicKey, pskAt0),
+        },
+        {
+            name: 'PSK envelope: version 0x02→0x01 downgrade (must fail)',
+            input: hex(pskVersionDowngrade),
+            note: 'PSK ciphertext sealed under VERSION_AAD; downgrading version omits AAD and fails closed.',
+            expect: attemptPskDecrypt(pskVersionDowngrade, keysB.privateKey, keysB.publicKey, pskAt0),
+        },
+        {
+            name: 'PSK envelope: protocolId flip (must fail)',
+            input: hex(pskProtocolFlip),
+            note: 'protocolId is AAD-bound in the PSK header; flipping it fails decode / auth.',
+            expect: attemptPskDecrypt(pskProtocolFlip, keysB.privateKey, keysB.publicKey, pskAt0),
+        },
+        {
+            name: 'PSK envelope: ratchetCounter mutation (must fail)',
+            input: hex(pskCounterMut),
+            note: 'Big-endian ratchetCounter is part of pskHeaderAAD; mutating it fails closed.',
+            expect: attemptPskDecrypt(pskCounterMut, keysB.privateKey, keysB.publicKey, pskAt0),
         },
         {
             name: 'PSK envelope: wrong ratchet position key (counter 1 instead of 0)',

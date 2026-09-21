@@ -46,19 +46,27 @@ export function parseKeyAnnouncement(
     }
 
     const publicKey = note.slice(0, 32);
-    let isVerified = false;
 
-    if (note.length >= 96 && ed25519PublicKey) {
-        // Has signature, verify it
+    if (note.length >= 96) {
+        // Signed announcement: verify or reject. A present-but-invalid
+        // signature must NOT fall through as an unverified key (#229) —
+        // that would let a malicious indexer substitute an attacker key.
+        if (!ed25519PublicKey) {
+            return undefined;
+        }
         const signature = note.slice(32, 96);
         try {
-            isVerified = verifyEncryptionKey(publicKey, ed25519PublicKey, signature);
+            if (!verifyEncryptionKey(publicKey, ed25519PublicKey, signature)) {
+                return undefined;
+            }
         } catch {
-            isVerified = false;
+            return undefined;
         }
+        return { publicKey, isVerified: true };
     }
 
-    return { publicKey, isVerified };
+    // Unsigned 32-byte announcement (TOFU / Falcon / legacy).
+    return { publicKey, isVerified: false };
 }
 
 /**
@@ -170,7 +178,9 @@ export async function discoverEncryptionKey(
         // Invalid address format — continue without verification
     }
 
-    let found: DiscoveredKey | undefined;
+    // Prefer verified (signed) announcements over earlier unsigned TOFU notes,
+    // mirroring AlgorandService.paginatedKeyDiscovery (#229).
+    let tofuCandidate: DiscoveredKey | undefined;
 
     await paginatedSearch(
         indexer,
@@ -186,16 +196,24 @@ export async function discoverEncryptionKey(
             if (!tx.note || tx.note.length < 32) return false;
 
             const key = parseKeyAnnouncement(tx.note, ed25519PublicKey);
-            if (key !== undefined) {
-                found = key;
-                return true; // stop iteration
+            if (key === undefined) {
+                // Invalid 96-byte (forged / unverifiable) — skip and keep scanning.
+                return false;
+            }
+            if (key.isVerified) {
+                tofuCandidate = key;
+                return true; // verified wins immediately
+            }
+            // Unsigned 32-byte announcement: remember first as TOFU, keep looking.
+            if (!tofuCandidate) {
+                tofuCandidate = key;
             }
             return false;
         },
         options
     );
 
-    return found;
+    return tofuCandidate;
 }
 
 /**

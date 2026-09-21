@@ -28,15 +28,15 @@
     "description": "Produced by encryptMessage with random ephemeral material; frozen as a fixed decryption target.",
     "plaintext": "Hello, AlgoChat conformance! The quick brown fox jumps over the lazy dog. 0123456789",
     "envelope": {
-      "version": 1,
+      "version": 2,
       "protocolId": 1,
       "senderPublicKey": "96c84d4da41f8ef515f9fc37a701144bff38e5c26ecd24ca161e4de66405557e",
-      "ephemeralPublicKey": "93009bcf5b7355a691f0d5eb288a4353c3b93c892a536429257122c6a3fb0d7f",
-      "nonce": "022906f26cde78258845fc2c",
-      "encryptedSenderKey": "fdd98b9c738770139e62f5e6739ae9e639a8489fac37bffc15c378c18f4e917b2b95da51c405c5bf230df25a045781db",
-      "ciphertext": "c891ae5baf8f5c771d2fd58ad661cea88630ef294ca96b97a4dd6170500de8f4f579d51e0d9ed6c4186d8a214cff2a55ba9eb08ade88157b1183a70ed7c9d3098ceca7f8fecd08e0aac1af7af5b356b9a563fa7a4ce3d0adf948f01662c2245a1e8d214c"
+      "ephemeralPublicKey": "679e12aefcb6767536173b912c2905d4b309817e0572382ac9b6596a76db7062",
+      "nonce": "7554c5e28cd6a6aad061d9fa",
+      "encryptedSenderKey": "f5fd3b14c1135dd9df4c69693be4d6f2919153eadf82e4d13dc945b03ebf8c1e6ff5816ce560029cc1431b1a22ec1cba",
+      "ciphertext": "641e90a6e7da655e2d2b247c7ae8186cdc55ee94dc8b08c7b4c5ddcefdfa6c7abdb3d66a934c4bbab7d093c8182d20abcba038dc59596ea25cc6217729dd53e9a51e50651cb2965829874267ce15a8fd0f488a4c0fcf6816e4339a4d812f42be7015eff6"
     },
-    "encodedBytes": "010196c84d4da41f8ef515f9fc37a701144bff38e5c26ecd24ca161e4de66405557e93009bcf5b7355a691f0d5eb288a4353c3b93c892a536429257122c6a3fb0d7f022906f26cde78258845fc2cfdd98b9c738770139e62f5e6739ae9e639a8489fac37bffc15c378c18f4e917b2b95da51c405c5bf230df25a045781dbc891ae5baf8f5c771d2fd58ad661cea88630ef294ca96b97a4dd6170500de8f4f579d51e0d9ed6c4186d8a214cff2a55ba9eb08ade88157b1183a70ed7c9d3098ceca7f8fecd08e0aac1af7af5b356b9a563fa7a4ce3d0adf948f01662c2245a1e8d214c",
+    "encodedBytes": "020196c84d4da41f8ef515f9fc37a701144bff38e5c26ecd24ca161e4de66405557e679e12aefcb6767536173b912c2905d4b309817e0572382ac9b6596a76db70627554c5e28cd6a6aad061d9faf5fd3b14c1135dd9df4c69693be4d6f2919153eadf82e4d13dc945b03ebf8c1e6ff5816ce560029cc1431b1a22ec1cba641e90a6e7da655e2d2b247c7ae8186cdc55ee94dc8b08c7b4c5ddcefdfa6c7abdb3d66a934c4bbab7d093c8182d20abcba038dc59596ea25cc6217729dd53e9a51e50651cb2965829874267ce15a8fd0f488a4c0fcf6816e4339a4d812f42be7015eff6",
     "decrypt": {
       "recipientPath": {
         "privateKey": "acb5e648bacdc9840c42b4797afda7d9dca0051ec132deb6d7fccbf690966465",

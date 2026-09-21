@@ -6,7 +6,10 @@
 
 /** PSK protocol constants */
 export const PSK_PROTOCOL = {
+    /** Legacy PSK envelopes (no header AAD). */
     VERSION: 0x01,
+    /** Current PSK envelopes bind the fixed header as AAD (#232). */
+    VERSION_AAD: 0x02,
     PROTOCOL_ID: 0x02,
     HEADER_SIZE: 130,
     TAG_SIZE: 16,

@@ -107,7 +107,7 @@ describe('parseKeyAnnouncement', () => {
         expect(result!.isVerified).toBe(false);
     });
 
-    test('returns unverified key when no ed25519PublicKey provided', () => {
+    test('rejects signed announcement when no ed25519PublicKey provided (#229)', () => {
         const { seed, encryptionKeys } = makeTestAccount();
         const signature = signEncryptionKey(encryptionKeys.publicKey, seed);
 
@@ -115,9 +115,10 @@ describe('parseKeyAnnouncement', () => {
         note.set(encryptionKeys.publicKey, 0);
         note.set(signature, 32);
 
+        // Without a verifying key we cannot bind identity — refuse rather than
+        // return an unverified attacker-substitutable key.
         const result = parseKeyAnnouncement(note);
-        expect(result).toBeDefined();
-        expect(result!.isVerified).toBe(false);
+        expect(result).toBeUndefined();
     });
 
     test('returns verified key for valid signature', () => {
@@ -133,7 +134,7 @@ describe('parseKeyAnnouncement', () => {
         expect(result!.isVerified).toBe(true);
     });
 
-    test('returns unverified key for invalid signature', () => {
+    test('rejects announcement with invalid signature (#229)', () => {
         const { ed25519PublicKey, encryptionKeys } = makeTestAccount();
 
         const note = new Uint8Array(96);
@@ -141,11 +142,10 @@ describe('parseKeyAnnouncement', () => {
         note.set(new Uint8Array(64).fill(0xFF), 32); // bogus signature
 
         const result = parseKeyAnnouncement(note, ed25519PublicKey);
-        expect(result).toBeDefined();
-        expect(result!.isVerified).toBe(false);
+        expect(result).toBeUndefined();
     });
 
-    test('returns unverified when signature is from a different account', () => {
+    test('rejects announcement signed by a different account (#229)', () => {
         const sender = makeTestAccount();
         const other = makeTestAccount();
         const signature = signEncryptionKey(sender.encryptionKeys.publicKey, other.seed);
@@ -154,10 +154,9 @@ describe('parseKeyAnnouncement', () => {
         note.set(sender.encryptionKeys.publicKey, 0);
         note.set(signature, 32);
 
-        // Verify against sender's key — should fail because other signed it
+        // Verify against sender's key — must reject because other signed it
         const result = parseKeyAnnouncement(note, sender.ed25519PublicKey);
-        expect(result).toBeDefined();
-        expect(result!.isVerified).toBe(false);
+        expect(result).toBeUndefined();
     });
 });
 
@@ -268,6 +267,74 @@ describe('discoverEncryptionKey', () => {
 
         const result = await discoverEncryptionKey(indexer, address);
         expect(result).toBeUndefined();
+    });
+
+    test('prefers later verified announcement over earlier unsigned TOFU (#229)', async () => {
+        const account = makeTestAccount();
+        const attackerKey = new Uint8Array(32).fill(0xEE);
+        const signature = signEncryptionKey(account.encryptionKeys.publicKey, account.seed);
+
+        const signedNote = new Uint8Array(96);
+        signedNote.set(account.encryptionKeys.publicKey, 0);
+        signedNote.set(signature, 32);
+
+        // Indexer returns newest-first typically; earlier in the array = seen first.
+        const indexer = mockIndexer([
+            {
+                txid: 'unsigned-first',
+                sender: account.address,
+                receiver: account.address,
+                note: attackerKey, // 32-byte unsigned TOFU
+                confirmedRound: 200,
+                roundTime: 1700000200,
+            },
+            {
+                txid: 'signed-later',
+                sender: account.address,
+                receiver: account.address,
+                note: signedNote,
+                confirmedRound: 100,
+                roundTime: 1700000100,
+            },
+        ]);
+
+        const result = await discoverEncryptionKey(indexer, account.address);
+        expect(result).toBeDefined();
+        expect(result!.isVerified).toBe(true);
+        expect(result!.publicKey).toEqual(account.encryptionKeys.publicKey);
+    });
+
+    test('skips forged 96-byte announcement and keeps unsigned TOFU (#229)', async () => {
+        const account = makeTestAccount();
+        const tofuKey = account.encryptionKeys.publicKey;
+
+        const forged = new Uint8Array(96);
+        forged.set(new Uint8Array(32).fill(0xAB), 0);
+        forged.set(new Uint8Array(64).fill(0xFF), 32);
+
+        const indexer = mockIndexer([
+            {
+                txid: 'forged',
+                sender: account.address,
+                receiver: account.address,
+                note: forged,
+                confirmedRound: 200,
+                roundTime: 1700000200,
+            },
+            {
+                txid: 'unsigned',
+                sender: account.address,
+                receiver: account.address,
+                note: tofuKey,
+                confirmedRound: 100,
+                roundTime: 1700000100,
+            },
+        ]);
+
+        const result = await discoverEncryptionKey(indexer, account.address);
+        expect(result).toBeDefined();
+        expect(result!.isVerified).toBe(false);
+        expect(result!.publicKey).toEqual(tofuKey);
     });
 
     test('handles malformed address gracefully (falls back to unverified)', async () => {
