@@ -178,7 +178,9 @@ export async function discoverEncryptionKey(
         // Invalid address format — continue without verification
     }
 
-    let found: DiscoveredKey | undefined;
+    // Prefer verified (signed) announcements over earlier unsigned TOFU notes,
+    // mirroring AlgorandService.paginatedKeyDiscovery (#229).
+    let tofuCandidate: DiscoveredKey | undefined;
 
     await paginatedSearch(
         indexer,
@@ -194,16 +196,24 @@ export async function discoverEncryptionKey(
             if (!tx.note || tx.note.length < 32) return false;
 
             const key = parseKeyAnnouncement(tx.note, ed25519PublicKey);
-            if (key !== undefined) {
-                found = key;
-                return true; // stop iteration
+            if (key === undefined) {
+                // Invalid 96-byte (forged / unverifiable) — skip and keep scanning.
+                return false;
+            }
+            if (key.isVerified) {
+                tofuCandidate = key;
+                return true; // verified wins immediately
+            }
+            // Unsigned 32-byte announcement: remember first as TOFU, keep looking.
+            if (!tofuCandidate) {
+                tofuCandidate = key;
             }
             return false;
         },
         options
     );
 
-    return found;
+    return tofuCandidate;
 }
 
 /**

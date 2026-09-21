@@ -269,6 +269,74 @@ describe('discoverEncryptionKey', () => {
         expect(result).toBeUndefined();
     });
 
+    test('prefers later verified announcement over earlier unsigned TOFU (#229)', async () => {
+        const account = makeTestAccount();
+        const attackerKey = new Uint8Array(32).fill(0xEE);
+        const signature = signEncryptionKey(account.encryptionKeys.publicKey, account.seed);
+
+        const signedNote = new Uint8Array(96);
+        signedNote.set(account.encryptionKeys.publicKey, 0);
+        signedNote.set(signature, 32);
+
+        // Indexer returns newest-first typically; earlier in the array = seen first.
+        const indexer = mockIndexer([
+            {
+                txid: 'unsigned-first',
+                sender: account.address,
+                receiver: account.address,
+                note: attackerKey, // 32-byte unsigned TOFU
+                confirmedRound: 200,
+                roundTime: 1700000200,
+            },
+            {
+                txid: 'signed-later',
+                sender: account.address,
+                receiver: account.address,
+                note: signedNote,
+                confirmedRound: 100,
+                roundTime: 1700000100,
+            },
+        ]);
+
+        const result = await discoverEncryptionKey(indexer, account.address);
+        expect(result).toBeDefined();
+        expect(result!.isVerified).toBe(true);
+        expect(result!.publicKey).toEqual(account.encryptionKeys.publicKey);
+    });
+
+    test('skips forged 96-byte announcement and keeps unsigned TOFU (#229)', async () => {
+        const account = makeTestAccount();
+        const tofuKey = account.encryptionKeys.publicKey;
+
+        const forged = new Uint8Array(96);
+        forged.set(new Uint8Array(32).fill(0xAB), 0);
+        forged.set(new Uint8Array(64).fill(0xFF), 32);
+
+        const indexer = mockIndexer([
+            {
+                txid: 'forged',
+                sender: account.address,
+                receiver: account.address,
+                note: forged,
+                confirmedRound: 200,
+                roundTime: 1700000200,
+            },
+            {
+                txid: 'unsigned',
+                sender: account.address,
+                receiver: account.address,
+                note: tofuKey,
+                confirmedRound: 100,
+                roundTime: 1700000100,
+            },
+        ]);
+
+        const result = await discoverEncryptionKey(indexer, account.address);
+        expect(result).toBeDefined();
+        expect(result!.isVerified).toBe(false);
+        expect(result!.publicKey).toEqual(tofuKey);
+    });
+
     test('handles malformed address gracefully (falls back to unverified)', async () => {
         const { encryptionKeys } = makeTestAccount();
         const badAddress = 'NOT_A_VALID_ADDRESS';
