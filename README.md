@@ -213,6 +213,23 @@ interface Conversation {
 }
 ```
 
+## Architecture
+
+Messages travel as encrypted notes on ordinary Algorand payments. The library encrypts and signs locally, submits through algod, and rebuilds conversations from the indexer. There is no server or contract in between.
+
+```mermaid
+flowchart LR
+    accTitle: Architecture overview: app, ts-algochat, algod, ledger and indexer
+    app["Your app"] --> sdk["ts-algochat<br/>AlgorandService"]
+    sdk -->|"X25519 + ChaCha20-Poly1305 envelope<br/>in a signed payment note"| algod["algod"]
+    algod --> chain[("Algorand ledger")]
+    chain --> indexer["Indexer"]
+    indexer -->|"history and<br/>key discovery"| sdk
+    sdk -.->|"optional"| queue["SendQueue +<br/>SyncManager"]
+```
+
+The [high-level design](docs/HLD.md) covers the modules, the wire formats, the send, receive, key-discovery, sync and PSK flows as sequence diagrams, the trust boundaries and the limits. The [documentation site](https://corvidlabs.github.io/ts-algochat/) shows it next to the API reference.
+
 ## Protocol
 
 This library implements the [AlgoChat Protocol v1.2](https://github.com/CorvidLabs/protocol-algochat) (account agility) and the PSK v1.1 extension. Envelope bytes for `0x01` / `0x02` are unchanged. Falcon identity does not make X25519 key exchange quantum-safe.

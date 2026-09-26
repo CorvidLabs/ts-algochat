@@ -2,6 +2,7 @@
 build = "bun run tsc"
 test = "bun test"
 clean = "rm -rf dist"
+docs = "bunx typedoc@0.28"
 
 [lanes.check]
 steps = ["build"]
