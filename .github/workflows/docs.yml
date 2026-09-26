@@ -5,8 +5,10 @@ on:
     branches: [main]
     paths:
       - src/**
+      - docs/**
       - README.md
       - index.html
+      - typedoc.json
       - .github/workflows/docs.yml
   workflow_dispatch:
 
@@ -34,16 +36,18 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      - name: Install TypeDoc
-        run: bun add -d typedoc
-
+      # typedoc.json: API reference + docs/HLD.md, with docs/assets/mermaid.js
+      # rendering the Mermaid diagrams. Same command as `fledge run docs`.
       - name: Generate documentation
-        run: bunx typedoc src/index.ts --out docs --name "ts-algochat" --readme README.md
+        run: bunx typedoc@0.28
+
+      - name: Check the HLD page and its diagrams were generated
+        run: grep -q 'class="mermaid"' _site/documents/High-Level_Design.html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs
+          path: _site
 
   deploy:
     needs: build

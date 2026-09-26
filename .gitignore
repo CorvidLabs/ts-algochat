@@ -29,3 +29,6 @@ npm-debug.log*
 # Coverage
 coverage/
 .nyc_output/
+
+# Documentation site (fledge run docs)
+_site/
