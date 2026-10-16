@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.8.0] - 2026-10-16
+
+### Features
+
+- Public note-capacity release after 0.6.1. Protocol revision 1.2.1 allows a
+  4096-byte Algorand note. Standard plaintext max is 3954 bytes and PSK
+  plaintext max is 3950 bytes (note size, minus the header, minus the 16-byte
+  tag). A note of 1024 bytes or fewer keeps the previous fee: 1000 for
+  Ed25519 and 3000 for Falcon-1024 when minFee is 1000. Larger notes add the
+  consensus surcharge on that scheme fee. One byte past the plaintext max
+  fails before a transaction is sent.
+
 ## [0.6.1] - 2026-09-21
 
 ### Security

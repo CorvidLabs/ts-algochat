@@ -23,7 +23,7 @@ the spec is safe. Both matter; don't conflate them.
 
 | File | What it pins down |
 |---|---|
-| `vectors/00-protocol-constants.json` | Version bytes, protocol IDs (0x01 standard / 0x02 PSK), header sizes, ratchet constants (`SESSION_SIZE` 100, `COUNTER_WINDOW` 200, `MAX_PAYLOAD_SIZE` 878) |
+| `vectors/00-protocol-constants.json` | Version bytes, protocol IDs (0x01 standard / 0x02 PSK), header sizes, ratchet constants (`SESSION_SIZE` 100, `COUNTER_WINDOW` 200, standard `MAX_PAYLOAD_SIZE` 3954, PSK `MAX_PAYLOAD_SIZE` 3950) |
 | `vectors/01-key-derivation.json` | HKDF-SHA256 X25519 derivation (salt `AlgoChat-v1-encryption`, info `x25519-key`), full mnemonic → account → X25519 chain, ECDH symmetry, Ed25519 key-announcement signatures, fingerprints |
 | `vectors/02-standard-envelope.json` | 0x01 wire format byte-exact encoding of a fully specified envelope; a captured real envelope (frozen ephemeral key + nonce) decrypted via **both** the recipient path and the sender path |
 | `vectors/03-psk-ratchet.json` | Two-level ratchet chain at counters 0/1/99/100/101/250 (session boundary crossings), hybrid ECDH+PSK message key, and the replay-window state-machine transcript |

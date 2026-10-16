@@ -4,20 +4,43 @@
  * Helper for building and signing message transactions on Algorand.
  */
 
-import type { ChatEnvelope } from '../models/types.js';
+import { encodeEnvelope } from '../crypto/envelope.js';
+import { MAX_NOTE_SIZE, type ChatEnvelope } from '../models/types.js';
+import type { SuggestedParams } from './types.js';
+
+export { MAX_NOTE_SIZE };
 
 /** Chat account interface (minimal) */
 export interface ChatAccountLike {
     address: string;
 }
-import type { SuggestedParams } from './types.js';
-import { encodeEnvelope } from '../crypto/envelope.js';
 
-/** Maximum size for transaction note field in bytes */
-export const MAX_NOTE_SIZE = 1024;
+/** Note bytes covered by one minimum fee. Bytes past this add a surcharge. */
+export const NOTE_FEE_BASE_BYTES = 1024;
+
+/** Falcon-1024 pays three minimum fees before the note surcharge. */
+export const FALCON_FEE_MULTIPLIER = 3;
+
+/** Authorizing scheme for a payment that carries a note. */
+export type PaymentScheme = 'ed25519' | 'falcon-1024';
 
 /** Minimum payment amount for a message (0.001 ALGO = 1000 microAlgos) */
 export const MINIMUM_PAYMENT = 1000;
+
+/**
+ * Minimum fee, in microAlgos, for a payment note.
+ *
+ * Scheme fee is `minFee * 3` for Falcon-1024 and `minFee` otherwise.
+ * Bytes past 1024 add `ceil(over * minFee / 10000)`, computed as
+ * `(over * minFee + 9999) / 10000` with integer division.
+ * A note of 1024 bytes or fewer has a zero surcharge.
+ */
+export function notePaymentFee(noteBytes: number, minFee: number, scheme: PaymentScheme): number {
+    const over = Math.max(0, noteBytes - NOTE_FEE_BASE_BYTES);
+    const surcharge = Math.floor((over * minFee + 9999) / 10000);
+    const schemeFee = scheme === 'falcon-1024' ? minFee * FALCON_FEE_MULTIPLIER : minFee;
+    return schemeFee + surcharge;
+}
 
 /** Error thrown when a message is too large */
 export class MessageTooLargeError extends Error {
@@ -112,6 +135,7 @@ export const MessageTransaction = {
      * @param envelope - The encrypted message envelope
      * @param params - Transaction parameters from the network
      * @param amount - Optional payment amount (default: minimum)
+     * @param scheme - Authorizing scheme (default: ed25519)
      * @returns Unsigned payment transaction
      * @throws MessageTooLargeError if envelope exceeds max note size
      */
@@ -120,7 +144,8 @@ export const MessageTransaction = {
         recipient: string,
         envelope: ChatEnvelope,
         params: SuggestedParams,
-        amount: number = MINIMUM_PAYMENT
+        amount: number = MINIMUM_PAYMENT,
+        scheme: PaymentScheme = 'ed25519'
     ): UnsignedTransaction {
         const noteData = encodeEnvelope(envelope);
 
@@ -134,7 +159,7 @@ export const MessageTransaction = {
             receiver: recipient,
             amount,
             note: noteData,
-            fee: Math.max(params.fee, params.minFee),
+            fee: notePaymentFee(noteData.length, params.minFee, scheme),
             firstRound: params.firstValid,
             lastRound: params.lastValid,
             genesisId: params.genesisId,
@@ -152,6 +177,7 @@ export const MessageTransaction = {
      * @param encodedEnvelope - The pre-encoded envelope bytes
      * @param params - Transaction parameters from the network
      * @param amount - Optional payment amount (default: minimum)
+     * @param scheme - Authorizing scheme (default: ed25519)
      * @returns Unsigned payment transaction
      * @throws MessageTooLargeError if envelope exceeds max note size
      */
@@ -160,7 +186,8 @@ export const MessageTransaction = {
         recipient: string,
         encodedEnvelope: Uint8Array,
         params: SuggestedParams,
-        amount: number = MINIMUM_PAYMENT
+        amount: number = MINIMUM_PAYMENT,
+        scheme: PaymentScheme = 'ed25519'
     ): UnsignedTransaction {
         if (encodedEnvelope.length > MAX_NOTE_SIZE) {
             throw new MessageTooLargeError(encodedEnvelope.length, MAX_NOTE_SIZE);
@@ -172,7 +199,7 @@ export const MessageTransaction = {
             receiver: recipient,
             amount,
             note: encodedEnvelope,
-            fee: Math.max(params.fee, params.minFee),
+            fee: notePaymentFee(encodedEnvelope.length, params.minFee, scheme),
             firstRound: params.firstValid,
             lastRound: params.lastValid,
             genesisId: params.genesisId,

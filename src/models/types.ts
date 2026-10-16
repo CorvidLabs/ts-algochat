@@ -155,6 +155,12 @@ export interface EncryptionOptions {
     psk?: Uint8Array;
 }
 
+/** Algorand consensus maximum for a transaction note, in bytes. */
+export const MAX_NOTE_SIZE = 4096;
+
+const STANDARD_HEADER_SIZE = 126;
+const STANDARD_TAG_SIZE = 16;
+
 /** Protocol constants */
 export const PROTOCOL = {
     /** Legacy envelopes (no header AAD). Still accepted on decrypt. */
@@ -162,9 +168,10 @@ export const PROTOCOL = {
     /** Current envelopes bind the fixed header as ChaCha20-Poly1305 AAD (#232). */
     VERSION_AAD: 0x02,
     PROTOCOL_ID: 0x01,
-    HEADER_SIZE: 126,
-    TAG_SIZE: 16,
+    HEADER_SIZE: STANDARD_HEADER_SIZE,
+    TAG_SIZE: STANDARD_TAG_SIZE,
     ENCRYPTED_SENDER_KEY_SIZE: 48,
-    MAX_PAYLOAD_SIZE: 882,
+    /** Note ceiling minus the fixed header and the Poly1305 tag. */
+    MAX_PAYLOAD_SIZE: MAX_NOTE_SIZE - STANDARD_HEADER_SIZE - STANDARD_TAG_SIZE,
     MIN_PAYMENT: 1000,
 } as const;

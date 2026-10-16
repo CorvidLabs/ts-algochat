@@ -24,7 +24,7 @@ The protocol itself is specified in [CorvidLabs/protocol-algochat](https://githu
 
 ## 1. Purpose
 
-ts-algochat is the TypeScript implementation of AlgoChat, an end-to-end encrypted messaging protocol that uses the Algorand blockchain as its only transport. Application developers embed it in browser, Bun or Node.js apps. It turns a 25-word Algorand mnemonic into a chat identity, finds a correspondent's encryption key from their on-chain history, encrypts each message into a compact binary envelope that fits in a payment transaction's 1,024-byte note, signs and submits that payment, and later rebuilds and decrypts conversations from the indexer. It adds an optional pre-shared-key (PSK) mode for defense in depth, an offline send queue and background sync. It protects message content. It does not hide who talks to whom, or when, because that metadata is public on chain ([spec invariant 10](../specs/algochat/algochat.spec.md)).
+ts-algochat is the TypeScript implementation of AlgoChat, an end-to-end encrypted messaging protocol that uses the Algorand blockchain as its only transport. Application developers embed it in browser, Bun or Node.js apps. It turns a 25-word Algorand mnemonic into a chat identity, finds a correspondent's encryption key from their on-chain history, encrypts each message into a compact binary envelope that fits in a payment transaction's 4096-byte note, signs and submits that payment, and later rebuilds and decrypts conversations from the indexer. It adds an optional pre-shared-key (PSK) mode for defense in depth, an offline send queue and background sync. It protects message content. It does not hide who talks to whom, or when, because that metadata is public on chain ([spec invariant 10](../specs/algochat/algochat.spec.md)).
 
 ## 2. Context
 
@@ -156,7 +156,7 @@ Wire layout ([`envelope.ts`](../src/crypto/envelope.ts), [`aad.ts`](../src/crypt
 - For `version 0x02`, the whole 126-byte header is the AEAD associated data. Rewriting any header byte, including `0x02` to `0x01`, makes decryption fail ([`decryptCiphertextWithHeaderAAD`](../src/crypto/encryption.ts)). `version 0x01` envelopes decrypt without AAD so old history stays readable.
 - [`decryptMessage`](../src/crypto/encryption.ts) picks the path by comparing the caller's public key with `senderPublicKey` in constant time ([`uint8ArrayEquals`](../src/crypto/keys.ts)). The recipient path re-derives the message key from ECDH. The sender path unwraps `encryptedSenderKey` first.
 - The plaintext is UTF-8. A reply is JSON `{"text", "replyTo": {"txid", "preview"}}` with the preview cut to 80 characters ([`encryptReply`](../src/crypto/encryption.ts)). A payload of `{"type":"key-publish"}` decrypts to `null`. Anything else that is not JSON with a `text` string is treated as plain text.
-- The plaintext limit is `PROTOCOL.MAX_PAYLOAD_SIZE` = 882 bytes, so the largest envelope is 126 + 882 + 16 = 1,024 bytes, exactly Algorand's note limit.
+- The plaintext limit is `PROTOCOL.MAX_PAYLOAD_SIZE` = 3954 bytes, which is 4096 minus the 126-byte header minus the 16-byte tag. That plaintext encodes to a note of exactly 4096 bytes. A plaintext of 882 bytes still fits in 1024 bytes.
 
 ### 4.3 PSK: two different mechanisms
 
@@ -169,7 +169,7 @@ The code has two ways to mix a pre-shared key into encryption. They are easy to 
 | Key material | `ikm = HKDF(ECDH, salt = PSK, info 'AlgoChatV1-PSK')`, then the standard HKDF | `HKDF(ECDH ‖ positionPSK, salt = ephemeralPub, info 'AlgoChatV1-PSK' ‖ senderPub ‖ recipientPub)`. The sender wrap key uses info `'AlgoChatV1-PSK-SenderKey' ‖ senderPub` |
 | Ratchet | none: the same 32-byte PSK for every message | `sessionPSK = HKDF(initialPSK, salt 'AlgoChat-PSK-Session', info = uint32BE(counter / 100))`, then `positionPSK = HKDF(sessionPSK, salt 'AlgoChat-PSK-Position', info = uint32BE(counter % 100))` |
 | Replay control | on-chain transaction uniqueness only | `validateCounter` / `recordReceive`: reject seen counters and counters outside `peerLastCounter ± 200` |
-| Plaintext limit | 882 bytes | 878 bytes |
+| Plaintext limit | 3954 bytes | 3950 bytes |
 | Used by `AlgorandService` | yes: one PSK passed to the constructor applies to every send and fetch of that service | **no**: `isChatMessage` only accepts protocol `0x01`, so the service skips PSK v1.1 notes. Apps compose the low-level functions and their own transport |
 
 Both PSK envelope versions follow the same AAD rule as the standard envelope: `0x02` binds the 130-byte header, `0x01` is legacy.
@@ -209,7 +209,7 @@ sequenceDiagram
         SB->>SB: encryptMessage key-publish payload to self
     end
     SB->>AD: getTransactionParams()
-    SB->>SB: build 0-amount self-payment, Falcon fee x3
+    SB->>SB: build 0-amount self-payment, fee = notePaymentFee
     SB->>AD: sendRawTransaction(txnSigner blob)
     AD-->>SB: txid
     Note over AD,IX: block confirmed, indexer catches up
@@ -248,10 +248,10 @@ sequenceDiagram
     S->>C: encryptMessage(text, senderPub, recipientPub, psk?)
     C-->>S: ChatEnvelope (version 0x02)
     S->>C: encodeEnvelope()
-    C-->>S: note bytes (at most 1,024)
+    C-->>S: note bytes (at most 4096)
     S->>AD: getTransactionParams()
     AD-->>S: suggested params
-    S->>S: Falcon: flatFee, fee = max(fee, minFee x 3)
+    S->>S: flatFee, fee = notePaymentFee(note, minFee, scheme)
     S->>S: payment to recipient, amount 1,000 microAlgos default
     S->>Sg: sign([txn])
     Sg-->>S: signed blob (sig or pqsig)
@@ -465,7 +465,7 @@ classDiagram
 | 32-byte unsigned announcement | self-payment | older clients. Still accepted as TOFU |
 | PSK envelope (`0x02` protocol) | chosen by the app | the app, using `psk/` |
 
-**Constants** ([`models/types.ts`](../src/models/types.ts), [`psk/types.ts`](../src/psk/types.ts)): `HEADER_SIZE` 126 / 130, `TAG_SIZE` 16, `ENCRYPTED_SENDER_KEY_SIZE` 48, `MAX_PAYLOAD_SIZE` 882 / 878, `MIN_PAYMENT` 1,000 microAlgos, `SESSION_SIZE` 100, `COUNTER_WINDOW` 200, `FALCON_FEE_MULTIPLIER` 3. [`conformance/vectors/00-protocol-constants.json`](../conformance/vectors/00-protocol-constants.json) pins them.
+**Constants** ([`models/types.ts`](../src/models/types.ts), [`psk/types.ts`](../src/psk/types.ts), [`message-transaction.ts`](../src/blockchain/message-transaction.ts)): `HEADER_SIZE` 126 / 130, `TAG_SIZE` 16, `ENCRYPTED_SENDER_KEY_SIZE` 48, `MAX_NOTE_SIZE` 4096, `MAX_PAYLOAD_SIZE` 3954 / 3950, `MIN_PAYMENT` 1,000 microAlgos, `SESSION_SIZE` 100, `COUNTER_WINDOW` 200, `FALCON_FEE_MULTIPLIER` 3. [`conformance/vectors/00-protocol-constants.json`](../conformance/vectors/00-protocol-constants.json) pins the payload maxima.
 
 **Local storage.** The SDK never stores mnemonics. Storage is opt-in:
 
@@ -543,9 +543,9 @@ What is **not** protected ([README, Security Properties](../README.md#security-p
 
 | Area | Limit or failure | Behavior |
 |---|---|---|
-| Size | Plaintext above 882 bytes (878 for PSK v1.1) | `EncryptionError` / `PSKEncryptionError` before any network call |
+| Size | Plaintext above 3954 bytes (3950 for PSK v1.1) | `EncryptionError` / `PSKEncryptionError` before any network call |
 | Funds | Balance too low for amount + fee | algod rejects the transaction and the algosdk error propagates. `ChatErrorCode.INSUFFICIENT_FUNDS` exists, but `AlgorandService` does not pre-check balances |
-| Fees | Falcon `pqsig` payments | fee raised to `max(fee, (minFee or fee) × 3)` with `flatFee` |
+| Fees | Payment note | Ed25519 pays minFee plus the note surcharge. Falcon-1024 pays minFee times 3 plus the same surcharge. The surcharge is 0 when the note is 1024 bytes or fewer. |
 | Confirmation | `waitForConfirmation` (default 10 rounds) | algosdk throws if the transaction is not confirmed in time |
 | Indexer lag | `waitForIndexer` (default 30 s) | backoff from 500 ms ×1.5 up to 5 s with ±20% jitter. On timeout `sendMessage` throws `ChatError` `TIMEOUT` after the transaction was already submitted |
 | History depth | `fetchMessages` (limit 50) and `fetchConversations` (limit 100) read **one** indexer page of all the account's transactions, chat or not | older messages need `beforeRound` paging or `MessageIndexer.fetchOlderMessages` |
@@ -571,7 +571,7 @@ The design record lives in SpecSync rather than a DECISIONS file:
 
 The decisions that shape the design:
 
-1. **Payment notes are the only transport.** No mailbox contract or relay. This keeps the protocol simple and interoperable. It also makes metadata public and ties message size to the 1,024-byte note.
+1. **Payment notes are the only transport.** No mailbox contract or relay. This keeps the protocol simple and interoperable. It also makes metadata public and ties message size to the 4096-byte note.
 2. **Per-message ephemeral ECDH with a sender-wrapped key.** Each message has its own key, and senders can re-read their history from chain alone. Because the ephemeral public key is on chain, this gives no forward secrecy, and the README says so plainly.
 3. **PSK is added to ECDH through HKDF, not in place of it.** An attacker needs both secrets.
 4. **One signing path for two schemes.** `txnSigner` hides whether the account signs with Ed25519 or Falcon-1024. New accounts default to Falcon. Imports default to Ed25519 so existing phrases keep their addresses.
@@ -579,6 +579,7 @@ The decisions that shape the design:
 6. **Authenticate the header and bind announced keys (0.6.1).** Envelope version `0x02` adds header AAD. Ed25519 accounts publish signed announcements, and discovery rejects forged ones. Legacy `0x01` still decrypts.
 7. **Injectable boundaries.** Blockchain interfaces, storage and caches are interfaces, so the protocol can be tested offline and ported to other SDKs.
 8. **Conformance vectors are append-only.** A changed deterministic byte is a protocol change and needs a version bump.
+9. **Note ceiling is 4096 bytes (protocol 1.2.1).** Plaintext maxima are the note size minus the header minus the 16-byte tag. Bytes past 1024 add a consensus fee surcharge on top of the Ed25519 or Falcon scheme fee.
 
 ## 11. Glossary
 
@@ -586,7 +587,7 @@ The decisions that shape the design:
 |---|---|
 | algod | The Algorand node REST API: fetches transaction parameters, accepts signed transactions and reports confirmation. |
 | Indexer | The Algorand service that answers queries over historical transactions. |
-| Note | The free-form field, up to 1,024 bytes, on an Algorand transaction. It carries the envelope. |
+| Note | The free-form field, up to 4096 bytes, on an Algorand transaction. It carries the envelope. The first 1024 bytes cost one minimum fee. |
 | Round | An Algorand block height. `confirmedRound` orders messages. |
 | microAlgo | One millionth of an Algo. The default message payment is 1,000. |
 | Envelope | The binary AlgoChat message: header plus ciphertext. |
