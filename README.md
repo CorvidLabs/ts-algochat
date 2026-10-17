@@ -1,3 +1,5 @@
+> **This repository has moved.** Development continues in [CorvidLabs/algochat](https://github.com/CorvidLabs/algochat) in the [`ts/`](https://github.com/CorvidLabs/algochat/tree/main/ts) directory. This copy stays public so existing package versions keep resolving. Open new work in the monorepo.
+
 # ts-algochat
 
 [![CI](https://img.shields.io/github/actions/workflow/status/CorvidLabs/ts-algochat/ci.yml?label=CI&branch=main)](https://github.com/CorvidLabs/ts-algochat/actions/workflows/ci.yml)
