@@ -13,7 +13,7 @@
       "HEADER_SIZE": 126,
       "TAG_SIZE": 16,
       "ENCRYPTED_SENDER_KEY_SIZE": 48,
-      "MAX_PAYLOAD_SIZE": 882,
+      "MAX_PAYLOAD_SIZE": 3954,
       "MIN_PAYMENT": 1000
     },
     "PSK_PROTOCOL": {
@@ -23,7 +23,7 @@
       "HEADER_SIZE": 130,
       "TAG_SIZE": 16,
       "ENCRYPTED_SENDER_KEY_SIZE": 48,
-      "MAX_PAYLOAD_SIZE": 878,
+      "MAX_PAYLOAD_SIZE": 3950,
       "SESSION_SIZE": 100,
       "COUNTER_WINDOW": 200
     },

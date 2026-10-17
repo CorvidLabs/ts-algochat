@@ -6,13 +6,14 @@
 
 import algosdk from 'algosdk';
 import type { Message, Conversation, SendResult, SendOptions, X25519KeyPair, DiscoveredKey, EncryptionOptions } from '../models/types.js';
+import { MAX_NOTE_SIZE } from '../models/types.js';
 import { encryptMessage, encryptReply, decryptMessage, encodeEnvelope, decodeEnvelope, isChatMessage, signEncryptionKey } from '../crypto/index.js';
 import { parseKeyAnnouncement } from '../blockchain/discovery.js';
+import { MessageTooLargeError, notePaymentFee, type PaymentScheme } from '../blockchain/message-transaction.js';
 import { ChatError } from '../errors/ChatError.js';
 import { SIGNING_SCHEME, type SigningScheme } from './mnemonic.service.js';
 
-/** Falcon-1024 minimum fee is base + 2× scheme contribution = 3× minFee. */
-export const FALCON_FEE_MULTIPLIER = 3;
+export { FALCON_FEE_MULTIPLIER } from '../blockchain/message-transaction.js';
 
 export interface AlgorandConfig {
     algodToken: string;
@@ -95,21 +96,23 @@ export class AlgorandService {
     }
 
     /**
-     * Raises Falcon-1024 payments to 3× minFee. Ed25519 params pass through.
+     * Flat consensus fee for this note. Falcon-1024 pays 3x minFee.
+     * Bytes past 1024 add the note surcharge. A missing minFee uses the suggested fee.
      */
     private suggestedParamsFor(
         chatAccount: ChatAccount,
-        params: algosdk.SuggestedParams
+        params: algosdk.SuggestedParams,
+        noteBytes: number
     ): algosdk.SuggestedParams {
-        if (chatAccount.scheme !== SIGNING_SCHEME.FALCON_1024) {
-            return params;
-        }
-        const fee = Number(params.fee);
-        const minFee = Number(params.minFee ?? fee);
+        const suggestedFee = Number(params.fee);
+        const minFee = Number(params.minFee ?? suggestedFee);
+        const scheme: PaymentScheme = chatAccount.scheme === SIGNING_SCHEME.FALCON_1024
+            ? 'falcon-1024'
+            : 'ed25519';
         return {
             ...params,
             flatFee: true,
-            fee: Math.max(fee, minFee * FALCON_FEE_MULTIPLIER),
+            fee: notePaymentFee(noteBytes, minFee, scheme),
         };
     }
 
@@ -148,11 +151,15 @@ export class AlgorandService {
 
         // Encode to bytes
         const note = encodeEnvelope(envelope);
+        if (note.length > MAX_NOTE_SIZE) {
+            throw new MessageTooLargeError(note.length, MAX_NOTE_SIZE);
+        }
 
         // Get transaction parameters
         const params = this.suggestedParamsFor(
             chatAccount,
-            await this.algodClient.getTransactionParams().do()
+            await this.algodClient.getTransactionParams().do(),
+            note.length
         );
 
         // Build payment transaction
@@ -234,9 +241,13 @@ export class AlgorandService {
         );
 
         const note = encodeEnvelope(envelope);
+        if (note.length > MAX_NOTE_SIZE) {
+            throw new MessageTooLargeError(note.length, MAX_NOTE_SIZE);
+        }
         const params = this.suggestedParamsFor(
             chatAccount,
-            await this.algodClient.getTransactionParams().do()
+            await this.algodClient.getTransactionParams().do(),
+            note.length
         );
 
         const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
@@ -591,9 +602,14 @@ export class AlgorandService {
             note = encodeEnvelope(envelope);
         }
 
+        if (note.length > MAX_NOTE_SIZE) {
+            throw new MessageTooLargeError(note.length, MAX_NOTE_SIZE);
+        }
+
         const params = this.suggestedParamsFor(
             chatAccount,
-            await this.algodClient.getTransactionParams().do()
+            await this.algodClient.getTransactionParams().do(),
+            note.length
         );
 
         // Zero-amount self-payment

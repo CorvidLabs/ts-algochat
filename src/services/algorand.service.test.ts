@@ -9,6 +9,7 @@ import { describe, test, expect } from 'bun:test';
 import algosdk from 'algosdk';
 import { AlgorandService, FALCON_FEE_MULTIPLIER, type AlgorandConfig } from './algorand.service.js';
 import { SIGNING_SCHEME, createRandomChatAccount } from './mnemonic.service.js';
+import { PROTOCOL, MAX_NOTE_SIZE } from '../models/types.js';
 import { decryptMessage, encryptMessage, encodeEnvelope, isChatMessage, verifyEncryptionKey } from '../crypto/index.js';
 
 const TEST_CONFIG: AlgorandConfig = {
@@ -56,34 +57,53 @@ describe('AlgorandService', () => {
             const note = encodeEnvelope(envelope);
 
             // Verify note is within Algorand limits
-            expect(note.length).toBeLessThanOrEqual(1024);
+            expect(note.length).toBeLessThanOrEqual(MAX_NOTE_SIZE);
             expect(note.length).toBeGreaterThanOrEqual(142); // Minimum envelope size
         });
 
-        test('large message stays within note limit', () => {
+        test('plaintext of 882 bytes still encrypts inside 1024', () => {
             const sender = createRandomChatAccount().account;
             const recipient = createRandomChatAccount().account;
-
-            // Create message near max size (882 bytes plaintext max)
-            const largeMessage = 'A'.repeat(800);
+            const plaintext = 'A'.repeat(882);
 
             const envelope = encryptMessage(
-                largeMessage,
+                plaintext,
                 sender.encryptionKeys.publicKey,
                 recipient.encryptionKeys.publicKey
             );
-
             const note = encodeEnvelope(envelope);
+            const decrypted = decryptMessage(
+                envelope,
+                recipient.encryptionKeys.privateKey,
+                recipient.encryptionKeys.publicKey
+            );
 
+            expect(decrypted?.text).toBe(plaintext);
+            expect(note.length).toBe(1024);
             expect(note.length).toBeLessThanOrEqual(1024);
         });
 
-        test('message too large throws error', () => {
+        test('plaintext of 3954 bytes encodes to a note of exactly 4096', () => {
             const sender = createRandomChatAccount().account;
             const recipient = createRandomChatAccount().account;
+            const plaintext = 'A'.repeat(PROTOCOL.MAX_PAYLOAD_SIZE);
 
-            // Message over 882 bytes should fail
-            const oversizeMessage = 'A'.repeat(900);
+            expect(PROTOCOL.MAX_PAYLOAD_SIZE).toBe(3954);
+            const envelope = encryptMessage(
+                plaintext,
+                sender.encryptionKeys.publicKey,
+                recipient.encryptionKeys.publicKey
+            );
+            const note = encodeEnvelope(envelope);
+
+            expect(note.length).toBe(4096);
+            expect(note.length).toBe(MAX_NOTE_SIZE);
+        });
+
+        test('one byte over the plaintext max fails before a note is encoded', () => {
+            const sender = createRandomChatAccount().account;
+            const recipient = createRandomChatAccount().account;
+            const oversizeMessage = 'A'.repeat(PROTOCOL.MAX_PAYLOAD_SIZE + 1);
 
             expect(() =>
                 encryptMessage(
@@ -185,7 +205,7 @@ describe('AlgorandService', () => {
 
             // Can encode to valid note
             const note = encodeEnvelope(envelope);
-            expect(note.length).toBeLessThanOrEqual(1024);
+            expect(note.length).toBeLessThanOrEqual(MAX_NOTE_SIZE);
         });
     });
 
@@ -402,6 +422,77 @@ describe('AlgorandService', () => {
             expect(sender.scheme).toBe(SIGNING_SCHEME.FALCON_1024);
             expect(recipient.scheme).toBe(SIGNING_SCHEME.FALCON_1024);
             expect(decrypted?.text).toBe('post-quantum identity, classical ECDH');
+        });
+
+        test('max plaintext encodes to 4096 and pays the note surcharge', async () => {
+            const stub = makeStubAlgod();
+            const service = new AlgorandService(TEST_CONFIG);
+            attachAlgod(service, stub.client);
+
+            const sender = createRandomChatAccount({ scheme: 'ed25519' }).account;
+            const recipient = createRandomChatAccount().account;
+            const plaintext = 'B'.repeat(3954);
+
+            const result = await service.sendMessage(
+                sender,
+                recipient.address,
+                recipient.encryptionKeys.publicKey,
+                plaintext
+            );
+
+            expect(result.fee).toBe(1308);
+            const signed = algosdk.decodeSignedTransaction(stub.captured[0]);
+            expect(signed.txn.note?.length).toBe(4096);
+            expect(Number(signed.txn.fee)).toBe(1308);
+        });
+
+        test('Falcon max note pays 3308 at minFee 1000', async () => {
+            const stub = makeStubAlgod();
+            const service = new AlgorandService(TEST_CONFIG);
+            attachAlgod(service, stub.client);
+
+            const sender = createRandomChatAccount().account;
+            const recipient = createRandomChatAccount().account;
+            const plaintext = 'C'.repeat(3954);
+
+            const result = await service.sendMessage(
+                sender,
+                recipient.address,
+                recipient.encryptionKeys.publicKey,
+                plaintext
+            );
+
+            expect(result.fee).toBe(3308);
+            const signed = algosdk.decodeSignedTransaction(stub.captured[0]);
+            expect(signed.txn.note?.length).toBe(4096);
+            expect(Number(signed.txn.fee)).toBe(3308);
+        });
+
+        test('one byte over the plaintext max fails before send', async () => {
+            let paramCalls = 0;
+            const stub = makeStubAlgod();
+            const params = stub.client.getTransactionParams;
+            stub.client.getTransactionParams = () => {
+                paramCalls += 1;
+                return params();
+            };
+            const service = new AlgorandService(TEST_CONFIG);
+            attachAlgod(service, stub.client);
+
+            const sender = createRandomChatAccount({ scheme: 'ed25519' }).account;
+            const recipient = createRandomChatAccount().account;
+
+            await expect(
+                service.sendMessage(
+                    sender,
+                    recipient.address,
+                    recipient.encryptionKeys.publicKey,
+                    'D'.repeat(PROTOCOL.MAX_PAYLOAD_SIZE + 1)
+                )
+            ).rejects.toThrow(/too large/i);
+
+            expect(stub.captured).toHaveLength(0);
+            expect(paramCalls).toBe(0);
         });
     });
 });

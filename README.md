@@ -18,6 +18,7 @@ TypeScript implementation of the AlgoChat protocol for encrypted messaging on Al
 - **Reply Support** - Thread conversations with context
 - **Minimal Dependencies** - Uses @noble crypto libraries (audited) + algosdk 3.7 + falcon-1024
 - **Falcon-1024 accounts** - New identities sign with `pqsig` by default. Import without a scheme still recovers Ed25519
+- **4096-byte notes** - Standard plaintext up to 3954 bytes, PSK plaintext up to 3950 bytes. Notes past 1024 bytes pay the consensus fee surcharge
 - **TypeScript First** - Full type safety
 
 ## Security Properties
@@ -232,7 +233,7 @@ The [high-level design](docs/HLD.md) covers the modules, the wire formats, the s
 
 ## Protocol
 
-This library implements the [AlgoChat Protocol v1.2](https://github.com/CorvidLabs/protocol-algochat) (account agility) and the PSK v1.1 extension. Envelope bytes for `0x01` / `0x02` are unchanged. Falcon identity does not make X25519 key exchange quantum-safe.
+This library implements the [AlgoChat Protocol v1.2.1](https://github.com/CorvidLabs/protocol-algochat) (account agility and a 4096-byte note) and the PSK v1.1 extension. Envelope bytes for `0x01` / `0x02` are unchanged. Falcon identity does not make X25519 key exchange quantum-safe.
 
 ### Wire Format (v1.0 Standard)
 

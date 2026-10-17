@@ -42,6 +42,7 @@ export {
     MessageTooLargeError,
     MAX_NOTE_SIZE,
     MINIMUM_PAYMENT,
+    notePaymentFee,
 } from './message-transaction.js';
 
 // Message Indexer

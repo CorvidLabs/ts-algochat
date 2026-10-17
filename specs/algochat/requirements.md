@@ -40,10 +40,12 @@ Acceptance Criteria
 
 ### REQ-algochat-005
 
-Message transactions SHALL use the protocol minimum payment, encode the encrypted envelope as a note, and reject notes larger than `MAX_NOTE_SIZE` before submission.
+Message transactions SHALL use the protocol minimum payment, encode the encrypted envelope as a note, and reject notes larger than `MAX_NOTE_SIZE` (4096 bytes) before submission.
 
 Acceptance Criteria
-- Transaction construction exposes `MINIMUM_PAYMENT`, enforces 1,024 bytes, and preserves signed and unsigned transaction types.
+- Transaction construction exposes `MINIMUM_PAYMENT`, enforces 4096 bytes, and preserves signed and unsigned transaction types.
+- Standard plaintext of 882 bytes and PSK plaintext of 878 bytes still encrypt. Standard plaintext of 3954 bytes and PSK plaintext of 3950 bytes encode to a note of exactly 4096 bytes. One byte past either maximum fails before a transaction is built.
+- Payment fee is `notePaymentFee`: scheme fee plus surcharge. Scheme fee is `minFee * 3` for Falcon-1024 and `minFee` otherwise. Surcharge is `(max(0, noteBytes - 1024) * minFee + 9999) / 10000` using integer division. At minFee 1000 the vectors are 1024 to 1000, 1025 to 1001, 2000 to 1098, 4096 to 1308, and Falcon 4096 to 3308. Notes of 1024 bytes or fewer stay at 1000 or 3000.
 
 ### REQ-algochat-006
 
@@ -89,7 +91,7 @@ Acceptance Criteria
 - `createChatAccountFromMnemonic(mn)` returns `scheme: 'ed25519'` and the classical address.
 - `createChatAccountFromMnemonic(mn, { scheme: 'falcon-1024' })` recovers the Falcon address from a Falcon-generated mnemonic.
 - The same mnemonic yields identical X25519 keys and different addresses across schemes.
-- Falcon payments use at least `minFee * 3`.
+- Falcon payments use at least `minFee * 3`, plus the note surcharge when the note is longer than 1024 bytes.
 
 ### REQ-algochat-025
 

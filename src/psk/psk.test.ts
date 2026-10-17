@@ -29,6 +29,7 @@ import {
     parsePSKExchangeURI,
 } from './exchange.js';
 import { PSK_PROTOCOL } from './types.js';
+import { MAX_NOTE_SIZE } from '../models/types.js';
 
 /**
  * Helper: convert Uint8Array to hex string
@@ -174,6 +175,62 @@ describe('PSK Envelope Encoding/Decoding', () => {
         const decoded = decodePSKEnvelope(encoded);
 
         expect(decoded.ratchetCounter).toBe(0xffffffff);
+    });
+});
+
+describe('PSK note capacity', () => {
+    const aliceKeys = deriveEncryptionKeys(new Uint8Array(32).fill(1));
+    const bobKeys = deriveEncryptionKeys(new Uint8Array(32).fill(2));
+    const currentPSK = derivePSKAtCounter(INITIAL_PSK, 0);
+
+    test('plaintext of 878 bytes still encrypts inside 1024', () => {
+        const plaintext = 'A'.repeat(878);
+        const envelope = encryptPSKMessage(
+            plaintext,
+            aliceKeys.publicKey,
+            bobKeys.publicKey,
+            currentPSK,
+            0,
+        );
+        const note = encodePSKEnvelope(envelope);
+        const decrypted = decryptPSKMessage(
+            envelope,
+            bobKeys.privateKey,
+            bobKeys.publicKey,
+            currentPSK,
+        );
+
+        expect(decrypted?.text).toBe(plaintext);
+        expect(note.length).toBe(1024);
+        expect(note.length).toBeLessThanOrEqual(1024);
+    });
+
+    test('plaintext of 3950 bytes encodes to a note of exactly 4096', () => {
+        expect(PSK_PROTOCOL.MAX_PAYLOAD_SIZE).toBe(3950);
+        const plaintext = 'B'.repeat(PSK_PROTOCOL.MAX_PAYLOAD_SIZE);
+        const envelope = encryptPSKMessage(
+            plaintext,
+            aliceKeys.publicKey,
+            bobKeys.publicKey,
+            currentPSK,
+            0,
+        );
+        const note = encodePSKEnvelope(envelope);
+
+        expect(note.length).toBe(4096);
+        expect(note.length).toBe(MAX_NOTE_SIZE);
+    });
+
+    test('one byte over the PSK plaintext max fails before a note is built', () => {
+        expect(() =>
+            encryptPSKMessage(
+                'C'.repeat(PSK_PROTOCOL.MAX_PAYLOAD_SIZE + 1),
+                aliceKeys.publicKey,
+                bobKeys.publicKey,
+                currentPSK,
+                0,
+            ),
+        ).toThrow(/too large/i);
     });
 });
 
